@@ -88,16 +88,68 @@ li.pool:hover{background:var(--bg)}
 footer.backup{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
 footer.backup button,footer.backup .imp{border:1px solid var(--line);background:var(--surface);border-radius:9px;padding:8px 14px;font-size:13px;color:var(--muted);cursor:pointer}
 footer.backup .imp input{display:none}
+.topbar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.brand{font-family:var(--display);font-weight:700;font-size:18px;letter-spacing:-.02em}
+.tabs,.seg{display:flex;background:var(--surface);border:1px solid var(--line);border-radius:11px;padding:3px;gap:2px}
+.tabs button,.seg button{border:0;background:none;border-radius:8px;padding:7px 14px;font-size:14px;font-weight:500;color:var(--muted)}
+.tabs button.on,.seg button.on{background:var(--accent);color:#fff}
+.seg{flex-wrap:wrap}
+.seg button{padding:6px 11px;font-size:13px}
+.tab{display:grid;gap:20px}
+.pickdate{position:relative;display:inline-flex;align-items:center;border:1px solid var(--line);background:var(--surface);border-radius:8px;height:36px;padding:0 12px;font-size:13px;font-weight:500;cursor:pointer}
+.pickdate input{position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer;font-size:16px}
+.weekrow{display:grid;grid-template-columns:auto 1fr auto;gap:6px;align-items:center}
+.weekrow>button{border:1px solid var(--line);background:var(--surface);border-radius:8px;width:32px;height:100%;min-height:44px;font-size:18px}
+.side{display:grid;gap:20px;min-width:0}
+li.up button{width:100%;display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;text-align:left;border:0;background:none;padding:8px 6px;border-radius:9px}
+li.up button:hover{background:var(--bg)}
+li.up .d{font-weight:500}
+li.up .n{font-family:var(--mono);font-size:12px;color:var(--muted)}
+li.up .r{display:block;font-size:13px;color:var(--muted);font-weight:400;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.stats-head{display:flex;justify-content:space-between;align-items:end;gap:12px;flex-wrap:wrap}
+.tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+@media (max-width:760px){.tiles{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.tile{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 16px;display:grid;gap:4px;min-width:0}
+.tile .k{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-weight:600}
+.tile .v{font-family:var(--display);font-weight:700;font-size:30px;line-height:1.1;font-variant-numeric:tabular-nums}
+.tile .v small{font-size:.5em;color:var(--muted);font-weight:500}
+.tile .s{font-size:12px;color:var(--muted)}
+.chart{position:relative}
+.chart svg{display:block;width:100%;height:auto;overflow:visible}
+.chart .ax{fill:var(--muted);font:11px var(--mono)}
+.chart .grid{stroke:var(--line);stroke-width:1}
+.chart .b{fill:var(--done)}
+.chart .nb{fill:var(--line)}
+.chart .hit{fill:transparent;cursor:pointer}
+.chart .hl{fill:var(--accent-soft)}
+.tip{position:absolute;pointer-events:none;background:var(--fg);color:var(--bg);font-size:12px;padding:6px 9px;border-radius:7px;white-space:nowrap;transform:translate(-50%,-100%);margin-top:-8px;font-variant-numeric:tabular-nums}
+.wdrow{display:grid;grid-template-columns:28px 1fr 64px;gap:10px;align-items:center;font-size:13px}
+.wdrow .tr{height:14px;background:var(--bg);border-radius:4px;overflow:hidden}
+.wdrow .tr i{display:block;height:100%;background:var(--done);border-radius:0 4px 4px 0}
+.wdrow .val{font-family:var(--mono);font-size:12px;color:var(--muted);text-align:right}
+.toptask{display:grid;grid-template-columns:1fr auto;gap:10px;font-size:14px;padding:6px 2px;border-bottom:1px solid var(--line)}
+.toptask:last-child{border-bottom:0}
+.toptask .t{min-width:0}
+.toptask .val{font-family:var(--mono);font-size:12px;color:var(--muted);white-space:nowrap}
 </style>
 </head>
 <body>
 <div class="wrap">
+  <div class="topbar">
+    <span class="brand">Delishki</span>
+    <div class="tabs" role="tablist">
+      <button type="button" data-tab="plan" class="on" role="tab">План</button>
+      <button type="button" data-tab="stats" role="tab">Статистика</button>
+    </div>
+  </div>
+  <div class="tab" id="tabPlan">
   <header class="day">
     <div>
       <div class="datenav">
         <button id="prev" aria-label="Предыдущий день">‹</button>
         <button id="next" aria-label="Следующий день">›</button>
         <button id="today" class="today">Сегодня</button>
+        <label class="pickdate">Выбрать дату<input type="date" id="datePick" aria-label="Выбрать дату"></label>
         <span class="eyebrow" id="rel"></span>
       </div>
       <h1 id="dateTitle">—</h1>
@@ -109,7 +161,11 @@ footer.backup .imp input{display:none}
     <div class="bar empty" id="bar"><span></span></div>
   </header>
 
-  <nav class="week" id="week" aria-label="Неделя"></nav>
+  <div class="weekrow">
+    <button id="wprev" type="button" aria-label="Предыдущая неделя">‹</button>
+    <nav class="week" id="week" aria-label="Неделя"></nav>
+    <button id="wnext" type="button" aria-label="Следующая неделя">›</button>
+  </div>
 
   <div class="cols">
     <section class="panel">
@@ -122,6 +178,11 @@ footer.backup .imp input{display:none}
       <p class="status" id="status"></p>
     </section>
 
+    <div class="side">
+    <section class="panel">
+      <h2>Запланировано наперёд <span class="count" id="upCount"></span></h2>
+      <ul id="upList"></ul>
+    </section>
     <section class="panel">
       <h2>Общий список <span class="count" id="poolCount"></span></h2>
       <p class="hint">Задачи «на потом». Нажмите «В план», чтобы взять задачу на выбранный день.</p>
@@ -131,6 +192,40 @@ footer.backup .imp input{display:none}
       </form>
       <ul id="poolList"></ul>
     </section>
+    </div>
+  </div>
+  </div>
+
+  <div class="tab" id="tabStats" hidden>
+    <div class="stats-head">
+      <div><div class="eyebrow" id="rangeLabel"></div><h1>Статистика</h1></div>
+      <div class="seg" id="range">
+        <button type="button" data-r="7">7 дней</button>
+        <button type="button" data-r="30" class="on">30 дней</button>
+        <button type="button" data-r="90">90 дней</button>
+        <button type="button" data-r="all">Всё время</button>
+      </div>
+    </div>
+    <div class="tiles">
+      <div class="tile"><span class="k">Средний процент</span><span class="v" id="stAvg">—</span><span class="s">по дням с задачами</span></div>
+      <div class="tile"><span class="k">Выполнено</span><span class="v" id="stDone">—</span><span class="s" id="stDoneSub"></span></div>
+      <div class="tile"><span class="k">Дни на 100%</span><span class="v" id="stPerfect">—</span><span class="s" id="stPerfectSub"></span></div>
+      <div class="tile"><span class="k">Серия</span><span class="v" id="stStreak">—</span><span class="s">дней подряд на 100%</span></div>
+    </div>
+    <section class="panel">
+      <h2>Процент по дням</h2>
+      <div class="chart" id="dayChart"></div>
+    </section>
+    <div class="cols">
+      <section class="panel">
+        <h2>По дням недели</h2>
+        <div id="wdChart" style="display:grid;gap:8px"></div>
+      </section>
+      <section class="panel">
+        <h2>Частые задачи</h2>
+        <div id="topTasks"></div>
+      </section>
+    </div>
   </div>
   <footer class="backup">
     <button id="exportBtn" type="button">Сохранить копию</button>
@@ -204,6 +299,18 @@ function render(){
     </li>`).join("") : `<li class="empty-note">Общий список пуст. Сюда попадают задачи, которые можно взять в любой день.</li>`;
   ps.forEach((p,i)=>{ $("#poolList").children[i].querySelector(".t").textContent = p.title; });
 
+  // upcoming (after today)
+  const t0 = todayIso(), byDate = {};
+  plan.forEach(t=>{ if(t.date > t0) (byDate[t.date] ||= []).push(t); });
+  const ups = Object.keys(byDate).sort();
+  $("#upCount").textContent = ups.length ? ups.length+" "+plural(ups.length,"день","дня","дней") : "";
+  $("#upList").innerHTML = ups.length ? ups.map(day=>{ const dd = parse(day), n = byDate[day].length;
+    return `<li class="up"><button data-day="${day}"><span><span class="d">${WDS[dd.getDay()]}, ${dd.getDate()} ${MONTHS[dd.getMonth()]}${dd.getFullYear()!==new Date().getFullYear()?" "+dd.getFullYear():""}</span><span class="r"></span></span><span class="n">${n} ${plural(n,"задача","задачи","задач")}</span></button></li>`; }).join("")
+    : `<li class="empty-note">Будущих задач нет. Нажмите «Выбрать дату» или листайте недели стрелками, чтобы запланировать.</li>`;
+  ups.forEach((day,i)=>{ $("#upList").children[i].querySelector(".r").textContent = byDate[day].map(t=>t.title).join(", "); });
+  $("#datePick").value = sel;
+  if(!$("#tabStats").hidden) renderStats();
+
   document.querySelectorAll("form.add input, form.add button, .chk, .del, .pick:not([disabled])").forEach(el=>{ if(readOnly) el.disabled = true; });
 }
 
@@ -216,6 +323,88 @@ function status(t){ $("#status").textContent = t; }
 $("#prev").onclick = ()=>{ sel = addDays(sel,-1); render(); };
 $("#next").onclick = ()=>{ sel = addDays(sel,1); render(); };
 $("#today").onclick = ()=>{ sel = todayIso(); render(); };
+$("#wprev").onclick = ()=>{ sel = addDays(sel,-7); render(); };
+$("#wnext").onclick = ()=>{ sel = addDays(sel,7); render(); };
+$("#datePick").onchange = e=>{ if(e.target.value){ sel = e.target.value; render(); } };
+$("#upList").onclick = e=>{ const b = e.target.closest("button[data-day]"); if(b){ sel = b.dataset.day; render(); window.scrollTo({top:0,behavior:"smooth"}); } };
+
+// tabs
+function showTab(name){
+  $("#tabPlan").hidden = name!=="plan"; $("#tabStats").hidden = name!=="stats";
+  document.querySelectorAll(".tabs button").forEach(b=>b.classList.toggle("on", b.dataset.tab===name));
+  try{ localStorage.setItem("delishki-tab", name); }catch(_){}
+  render();
+}
+document.querySelector(".tabs").onclick = e=>{ const b = e.target.closest("button[data-tab]"); if(b) showTab(b.dataset.tab); };
+
+// stats
+let range = "30";
+$("#range").onclick = e=>{ const b = e.target.closest("button[data-r]"); if(!b) return; range = b.dataset.r;
+  document.querySelectorAll("#range button").forEach(x=>x.classList.toggle("on", x===b)); renderStats(); };
+const shortDate = s => { const d = parse(s); return d.getDate()+" "+MONTHS[d.getMonth()].slice(0,3); };
+
+function renderStats(){
+  const t0 = todayIso();
+  let start;
+  if(range==="all"){ const past = plan.map(t=>t.date).filter(x=>x<=t0).sort(); start = past[0] || t0; }
+  else start = addDays(t0, -(+range-1));
+  const days = []; for(let d = start; d <= t0; d = addDays(d,1)) days.push(d);
+  const per = days.map(d=>({d, ...stats(d)}));
+  const active = per.filter(x=>x.total);
+  const done = active.reduce((a,x)=>a+x.done,0), total = active.reduce((a,x)=>a+x.total,0);
+  const perfect = active.filter(x=>x.done===x.total).length;
+  $("#rangeLabel").textContent = shortDate(start)+" — "+shortDate(t0);
+  $("#stAvg").innerHTML = active.length ? Math.round(active.reduce((a,x)=>a+x.pct,0)/active.length)+"<small>%</small>" : "—";
+  $("#stDone").innerHTML = total ? done+"<small> из "+total+"</small>" : "—";
+  $("#stDoneSub").textContent = total ? Math.round(done/total*100)+"% всех задач" : "задач в этот период нет";
+  $("#stPerfect").textContent = perfect;
+  $("#stPerfectSub").textContent = active.length ? "из "+active.length+" "+plural(active.length,"дня","дней","дней")+" с задачами" : "";
+  // streak: consecutive 100% days ending today (today counts only if already 100%)
+  let streak = 0, d = t0;
+  const sd = stats(d); if(!(sd.total && sd.done===sd.total)) d = addDays(d,-1);
+  for(;;){ const x = stats(d); if(x.total && x.done===x.total){ streak++; d = addDays(d,-1); } else break; }
+  $("#stStreak").textContent = streak;
+
+  // day chart
+  const W = 640, H = 200, L = 34, R = 6, T = 10, B = 26, n = per.length;
+  const step = (W-L-R)/n, bw = Math.max(2, Math.min(28, step-2));
+  const y = v => T + (H-T-B)*(1-v/100);
+  let g = "";
+  [0,50,100].forEach(v=>{ g += `<line class="grid" x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}"/><text class="ax" x="${L-6}" y="${y(v)+4}" text-anchor="end">${v}%</text>`; });
+  const every = Math.ceil(n/7);
+  per.forEach((x,i)=>{
+    const cx = L + step*i + step/2;
+    if(x.total){ const h = Math.max(2, (H-T-B)*x.pct/100), top = y(0)-h, r = Math.min(4,bw/2);
+      g += `<path class="b" d="M${cx-bw/2},${y(0)}V${top+r}a${r},${r} 0 0 1 ${r},-${r}H${cx+bw/2-r}a${r},${r} 0 0 1 ${r},${r}V${y(0)}Z"/>`; }
+    else g += `<rect class="nb" x="${cx-bw/2}" y="${y(0)-2}" width="${bw}" height="2"/>`;
+    if((n-1-i)%every===0) g += `<text class="ax" x="${cx}" y="${H-8}" text-anchor="middle">${shortDate(x.d)}</text>`;
+    g += `<rect class="hit" data-i="${i}" x="${L+step*i}" y="${T}" width="${step}" height="${H-T-B}"/>`;
+  });
+  $("#dayChart").innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Процент выполнения по дням">${g}</svg><div class="tip" hidden></div>`;
+  const tip = $("#dayChart .tip"), svg = $("#dayChart svg");
+  const show = e=>{ const r = e.target.closest(".hit"); if(!r){ tip.hidden = true; return; }
+    const x = per[+r.dataset.i], box = svg.getBoundingClientRect(), k = box.width/W;
+    tip.textContent = shortDate(x.d)+": "+(x.total ? `${x.done} из ${x.total} · ${x.pct}%` : "задач не было");
+    tip.style.left = Math.min(box.width-60, Math.max(60, (+r.getAttribute("x")+step/2)*k))+"px";
+    tip.style.top = (x.total ? y(x.pct) : y(0))*k+"px"; tip.hidden = false; };
+  svg.addEventListener("pointermove", show); svg.addEventListener("pointerdown", show);
+  svg.addEventListener("pointerleave", ()=>tip.hidden = true);
+
+  // weekdays (Mon first)
+  const wd = [1,2,3,4,5,6,0].map(k=>{ const xs = active.filter(x=>parse(x.d).getDay()===k);
+    return {k, n:xs.length, avg: xs.length ? Math.round(xs.reduce((a,x)=>a+x.pct,0)/xs.length) : null}; });
+  $("#wdChart").innerHTML = active.length ? wd.map(w=>`<div class="wdrow"><span>${WDS[w.k]}</span><span class="tr"><i style="width:${w.avg||0}%"></i></span><span class="val">${w.avg===null?"—":w.avg+"%"}</span></div>`).join("")
+    : `<p class="empty-note">Появится, когда будут дни с задачами.</p>`;
+
+  // frequent tasks
+  const groups = {};
+  plan.filter(t=>t.date>=start && t.date<=t0).forEach(t=>{ const k = t.title.trim().toLowerCase(); (groups[k] ||= {title:t.title, n:0, d:0}); groups[k].n++; if(t.done) groups[k].d++; });
+  const top = Object.values(groups).sort((a,b)=>b.n-a.n || b.d-a.d).slice(0,6);
+  $("#topTasks").innerHTML = top.length ? top.map(()=>`<div class="toptask"><span class="t"></span><span class="val"></span></div>`).join("") : `<p class="empty-note">Пока нет задач за этот период.</p>`;
+  top.forEach((x,i)=>{ const row = $("#topTasks").children[i]; row.querySelector(".t").textContent = x.title;
+    row.querySelector(".val").textContent = `${x.d} из ${x.n} · ${Math.round(x.d/x.n*100)}%`; });
+}
+
 $("#week").onclick = e=>{ const b = e.target.closest("button[data-day]"); if(b){ sel = b.dataset.day; render(); } };
 
 $("#addPlan").onsubmit = e=>{
@@ -254,7 +443,9 @@ $("#importFile").onchange = async e=>{
   catch(_){ status("Это не файл копии планера."); }
   e.target.value = "";
 };
-load(); render(); status(plan.length||pool.length ? "Сохранено на этом устройстве." : "Задачи хранятся только на этом устройстве.");
+load();
+let startTab = "plan"; try{ startTab = localStorage.getItem("delishki-tab")==="stats" ? "stats" : "plan"; }catch(_){}
+showTab(startTab); status(plan.length||pool.length ? "Сохранено на этом устройстве." : "Задачи хранятся только на этом устройстве.");
 </script>
 </body>
 </html>
