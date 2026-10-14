@@ -1,0 +1,12 @@
+{
+  "name": "refs-collector",
+  "version": "1.0.0",
+  "description": "Сбор референсов с Pinterest, Google Картинок и Яндекс Картинок",
+  "type": "module",
+  "private": true,
+  "engines": { "node": ">=18" },
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test test/*.test.js"
+  }
+}
