@@ -25,11 +25,11 @@
 :root[data-theme="dark"]{
   --bg:#10141c; --surface:#181e29; --fg:#e6eaf2; --muted:#98a2b3; --line:#2a3240;
   --accent:#7d95ff; --accent-soft:#232c4a; --done:#4cc890; --done-soft:#173628; --danger:#ef7a72; color-scheme:dark}
-/* Christmas: pine green night, candy-cane red, tinsel gold */
+/* Christmas: frosty winter night, ice blue, frost mint, garland lights */
 :root[data-theme="xmas"]{
-  --bg:#0e2a1f; --surface:#14392b; --fg:#f7f0e3; --muted:#b5c9bb; --line:#24503d;
-  --accent:#e2453b; --accent-soft:#4a2a24; --done:#f3c552; --done-soft:#3d3a1e; --danger:#ff8a7a;
-  --on-accent:#fff; --on-done:#2b1d00; --brand-font:"Mountains of Christmas",var(--display); color-scheme:dark}
+  --bg:#0a1626; --surface:#102238; --fg:#eef6ff; --muted:#a3bbd4; --line:#1f3a5a;
+  --accent:#5cc2ff; --accent-soft:#16344f; --done:#79e6cf; --done-soft:#123a3a; --danger:#ff8a8a;
+  --on-accent:#03111e; --on-done:#032420; --brand-font:"Mountains of Christmas",var(--display); color-scheme:dark}
 /* Halloween: midnight purple, pumpkin orange, slime green */
 :root[data-theme="halloween"]{
   --bg:#150f1f; --surface:#211830; --fg:#f4ecff; --muted:#b4a6c8; --line:#3a2c4f;
@@ -113,7 +113,14 @@ footer.backup button,footer.backup .imp{border:1px solid var(--line);background:
 footer.backup .imp input{display:none}
 :root[data-theme="xmas"] .brand,:root[data-theme="halloween"] .brand{font-size:26px;font-weight:700;letter-spacing:.01em}
 :root[data-theme="halloween"] .brand{color:var(--accent);letter-spacing:.04em}
-:root[data-theme="xmas"] .brand{color:var(--done)}
+:root[data-theme="xmas"] .brand{color:#f4fbff;text-shadow:0 0 12px rgba(92,194,255,.7)}
+:root[data-theme="xmas"] section.panel,:root[data-theme="xmas"] .tile{background:linear-gradient(180deg,rgba(180,225,255,.07),transparent 40%),var(--surface);border-color:#2a4d73}
+#garland{display:none;position:absolute;top:0;left:0;right:0;height:70px;pointer-events:none;z-index:2;overflow:hidden}
+:root[data-theme="xmas"] #garland{display:block}
+:root[data-theme="xmas"] .wrap{padding-top:58px}
+#garland .bulb{animation:twinkle 2.4s ease-in-out infinite}
+@keyframes twinkle{0%,100%{opacity:1}50%{opacity:.35}}
+@media (prefers-reduced-motion:reduce){#garland .bulb{animation:none}}
 .topright{display:flex;gap:8px;align-items:center}
 .themewrap{position:relative}
 #themeBtn{width:40px;height:40px;border-radius:11px;border:1px solid var(--line);background:var(--surface);display:grid;place-items:center;padding:0}
@@ -216,6 +223,7 @@ li.up .r{display:block;font-size:13px;color:var(--muted);font-weight:400;overflo
 </head>
 <body>
 <canvas id="fx" aria-hidden="true"></canvas>
+<svg id="garland" aria-hidden="true"></svg>
 <div class="wrap">
   <div class="topbar">
     <span class="brand">Delishki</span>
@@ -228,7 +236,7 @@ li.up .r{display:block;font-size:13px;color:var(--muted);font-weight:400;overflo
         <button type="button" data-th="auto"><span class="sw" style="background:linear-gradient(135deg,#eef1f6 50%,#10141c 50%)"></span>Как в системе</button>
         <button type="button" data-th="light"><span class="sw" style="background:#eef1f6"><i style="background:#2f4fd8;margin:6px;border-radius:3px;grid-column:1/-1"></i></span>Светлая</button>
         <button type="button" data-th="dark"><span class="sw" style="background:#10141c"><i style="background:#7d95ff;margin:6px;border-radius:3px;grid-column:1/-1"></i></span>Тёмная</button>
-        <button type="button" data-th="xmas"><span class="sw" style="background:#0e2a1f"><i style="background:#e2453b"></i><i style="background:#f3c552"></i></span>Рождество</button>
+        <button type="button" data-th="xmas"><span class="sw" style="background:#0a1626"><i style="background:#5cc2ff"></i><i style="background:#79e6cf"></i></span>Рождество</button>
         <button type="button" data-th="halloween"><span class="sw" style="background:#150f1f"><i style="background:#ff7a1a"></i><i style="background:#9fe14a"></i></span>Хеллоуин</button>
       </div>
     </div>
@@ -751,7 +759,7 @@ $("#importFile").onchange = async e=>{
   e.target.value = "";
 };
 // auto-update: when the page is opened, fetch a fresh copy and reload if a newer version was published
-const APP_VERSION = "2026-10-15d";
+const APP_VERSION = "2026-10-15e";
 async function checkUpdate(){
   try{
     const r = await fetch(location.pathname+"?check="+Date.now(), {cache:"no-store"});
@@ -763,7 +771,7 @@ checkUpdate();
 document.addEventListener("visibilitychange", ()=>{ if(document.visibilityState==="visible") checkUpdate(); });
 
 // themes
-const THEME_COLORS = {light:"#eef1f6", dark:"#10141c", xmas:"#0e2a1f", halloween:"#150f1f"};
+const THEME_COLORS = {light:"#eef1f6", dark:"#10141c", xmas:"#0a1626", halloween:"#150f1f"};
 let theme = "auto";
 function applyTheme(t){
   theme = t;
@@ -773,11 +781,34 @@ function applyTheme(t){
   document.querySelector('meta[name="theme-color"]').content = THEME_COLORS[t==="auto" ? (sysDark?"dark":"light") : t];
   document.querySelectorAll("#themeMenu button").forEach(b=>b.classList.toggle("on", b.dataset.th===t));
   try{ localStorage.setItem("delishki-theme", t); }catch(_){}
+  if(t==="xmas") drawGarland();
   startFx();
 }
 $("#themeBtn").onclick = e=>{ e.stopPropagation(); const m = $("#themeMenu"); m.hidden = !m.hidden; $("#themeBtn").setAttribute("aria-expanded", !m.hidden); };
 $("#themeMenu").onclick = e=>{ const b = e.target.closest("button[data-th]"); if(b){ applyTheme(b.dataset.th); $("#themeMenu").hidden = true; } };
 document.addEventListener("click", e=>{ if(!e.target.closest(".themewrap")) $("#themeMenu").hidden = true; });
+
+// Christmas garland: a sagging wire across the top with twinkling bulbs
+const BULBS = ["#ff4d5e","#ffd166","#5cff9d","#5cc2ff","#ff8bd1"];
+function drawGarland(){
+  const g = $("#garland"), W = document.documentElement.clientWidth, span = W < 600 ? 95 : 130, n = Math.ceil(W/span);
+  const step = W/n, sag = 26, top = 4;
+  let wire = `M0,${top}`, bulbs = "", k = 0;
+  for(let i=0;i<n;i++){
+    const x0 = i*step, x1 = x0+step;
+    wire += ` Q${x0+step/2},${top+sag*2} ${x1},${top}`;
+    for(let j=1;j<=4;j++){
+      const t = j/5, x = x0 + step*t, y = top + 2*sag*2*t*(1-t) * 1;   // point on the quadratic curve
+      const c = BULBS[k%BULBS.length], d = ((k*0.37)%1*2.4).toFixed(2);
+      bulbs += `<g class="bulb" style="animation-delay:-${d}s"><rect x="${x-2.5}" y="${y}" width="5" height="5" rx="1" fill="#6b7a8c"/>
+        <ellipse cx="${x}" cy="${y+12}" rx="5.5" ry="8" fill="${c}" style="filter:drop-shadow(0 0 6px ${c})"/></g>`;
+      k++;
+    }
+  }
+  g.setAttribute("viewBox", `0 0 ${W} 70`); g.setAttribute("width", W); g.setAttribute("height", 70);
+  g.innerHTML = `<path d="${wire}" fill="none" stroke="#5a7896" stroke-width="2"/>${bulbs}`;
+}
+addEventListener("resize", ()=>{ if(theme==="xmas") drawGarland(); });
 
 // festive background: snow for Christmas, bats for Halloween
 let fxRaf = 0;
