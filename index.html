@@ -10,12 +10,13 @@
 <link rel="apple-touch-icon" href="delishki-icon-180.png?v=3">
 <link rel="icon" type="image/png" href="delishki-icon-512.png?v=3">
 <title>Delishki</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700&family=Golos+Text:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700&family=Golos+Text:wght@400;500;600&family=JetBrains+Mono:wght@500&family=Creepster&family=Mountains+of+Christmas:wght@700&display=swap">
 <style>
 /* Layout: day header with big percent + week strip, then two columns — day plan | shared task pool */
 :root{
   --bg:#eef1f6; --surface:#ffffff; --fg:#17202e; --muted:#5d6879; --line:#d6dce6;
   --accent:#2f4fd8; --accent-soft:#e3e8fb; --done:#1d8a5b; --done-soft:#dcf1e6; --danger:#c2413a;
+  --on-accent:#fff; --on-done:#fff; --brand-font:var(--display);
   --display:"Unbounded",system-ui,sans-serif; --body:"Golos Text",system-ui,sans-serif; --mono:"JetBrains Mono",ui-monospace,monospace;
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
@@ -24,6 +25,16 @@
 :root[data-theme="dark"]{
   --bg:#10141c; --surface:#181e29; --fg:#e6eaf2; --muted:#98a2b3; --line:#2a3240;
   --accent:#7d95ff; --accent-soft:#232c4a; --done:#4cc890; --done-soft:#173628; --danger:#ef7a72; color-scheme:dark}
+/* Christmas: pine green night, candy-cane red, tinsel gold */
+:root[data-theme="xmas"]{
+  --bg:#0e2a1f; --surface:#14392b; --fg:#f7f0e3; --muted:#b5c9bb; --line:#24503d;
+  --accent:#e2453b; --accent-soft:#4a2a24; --done:#f3c552; --done-soft:#3d3a1e; --danger:#ff8a7a;
+  --on-accent:#fff; --on-done:#2b1d00; --brand-font:"Mountains of Christmas",var(--display); color-scheme:dark}
+/* Halloween: midnight purple, pumpkin orange, slime green */
+:root[data-theme="halloween"]{
+  --bg:#150f1f; --surface:#211830; --fg:#f4ecff; --muted:#b4a6c8; --line:#3a2c4f;
+  --accent:#ff7a1a; --accent-soft:#3d2414; --done:#9fe14a; --done-soft:#24361a; --danger:#ff6b6b;
+  --on-accent:#1b0f05; --on-done:#14200a; --brand-font:"Creepster",var(--display); color-scheme:dark}
 *{box-sizing:border-box}
 html{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 body{margin:0;-webkit-text-size-adjust:100%}
@@ -63,13 +74,13 @@ section.panel{background:var(--surface);border:1px solid var(--line);border-radi
 .panel h2 .count{font-family:var(--mono);font-size:12px;color:var(--muted);font-weight:500}
 form.add{display:flex;gap:8px}
 form.add input{flex:1;min-width:0;border:1px solid var(--line);background:var(--bg);color:var(--fg);border-radius:9px;padding:10px 12px;font:inherit}
-form.add button{border:0;background:var(--accent);color:#fff;border-radius:9px;padding:0 14px;font-weight:600;white-space:nowrap}
+form.add button{border:0;background:var(--accent);color:var(--on-accent);border-radius:9px;padding:0 14px;font-weight:600;white-space:nowrap}
 ul{list-style:none;margin:0;padding:0;display:grid;gap:4px}
 li.task{display:grid;grid-template-columns:auto 1fr auto auto;gap:10px;align-items:center;padding:8px 6px;border-radius:9px}
 li.task:hover{background:var(--bg)}
 .chk{width:24px;height:24px;border-radius:7px;border:2px solid var(--line);background:transparent;display:grid;place-items:center;padding:0}
 .chk svg{width:14px;height:14px;opacity:0}
-li.task.done .chk{background:var(--done);border-color:var(--done)}
+li.task.done .chk{background:var(--done);border-color:var(--done);color:var(--on-done)}
 li.task.done .chk svg{opacity:1}
 li.task.done .t{color:var(--muted);text-decoration:line-through;text-decoration-color:var(--muted)}
 .t{min-width:0;overflow-wrap:anywhere}
@@ -84,7 +95,7 @@ li.task.part .chk{border-color:var(--accent);background:linear-gradient(to top,v
 .pedit input[type=range]{width:100%;accent-color:var(--accent);height:28px}
 .quick{display:flex;gap:6px;flex-wrap:wrap}
 .quick button{flex:1;min-width:48px;border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:7px 0;font:500 13px var(--mono)}
-.quick button.on{border-color:var(--accent);background:var(--accent);color:#fff}
+.quick button.on{border-color:var(--accent);background:var(--accent);color:var(--on-accent)}
 .del{border:0;background:none;color:var(--muted);opacity:0;padding:4px 6px;border-radius:6px;font-size:16px}
 li:hover .del,.del:focus-visible{opacity:1}
 @media (hover:none){.del{opacity:.6}}
@@ -100,11 +111,25 @@ li.pool:hover{background:var(--bg)}
 footer.backup{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
 footer.backup button,footer.backup .imp{border:1px solid var(--line);background:var(--surface);border-radius:9px;padding:8px 14px;font-size:13px;color:var(--muted);cursor:pointer}
 footer.backup .imp input{display:none}
+:root[data-theme="xmas"] .brand,:root[data-theme="halloween"] .brand{font-size:26px;font-weight:700;letter-spacing:.01em}
+:root[data-theme="halloween"] .brand{color:var(--accent);letter-spacing:.04em}
+:root[data-theme="xmas"] .brand{color:var(--done)}
+.topright{display:flex;gap:8px;align-items:center}
+.themewrap{position:relative}
+#themeBtn{width:40px;height:40px;border-radius:11px;border:1px solid var(--line);background:var(--surface);display:grid;place-items:center;padding:0}
+#themeBtn svg{width:20px;height:20px}
+.thememenu{position:absolute;left:0;top:calc(100% + 6px);z-index:20;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:6px;display:grid;gap:2px;min-width:190px;box-shadow:0 10px 30px rgba(0,0,0,.18)}
+.thememenu button{display:flex;align-items:center;gap:10px;border:0;background:none;border-radius:8px;padding:9px 10px;font-size:14px;text-align:left}
+.thememenu button:hover{background:var(--bg)}
+.thememenu button.on{background:var(--accent-soft);font-weight:600}
+.sw{width:22px;height:22px;border-radius:6px;flex:none;border:1px solid rgba(128,128,128,.35);display:grid;grid-template-columns:1fr 1fr;overflow:hidden}
+#fx{position:fixed;inset:0;pointer-events:none;z-index:0}
+.wrap{position:relative;z-index:1}
 .topbar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
-.brand{font-family:var(--display);font-weight:700;font-size:18px;letter-spacing:-.02em}
+.brand{font-family:var(--brand-font);font-weight:700;font-size:18px;letter-spacing:-.02em}
 .tabs,.seg{display:flex;background:var(--surface);border:1px solid var(--line);border-radius:11px;padding:3px;gap:2px}
 .tabs button,.seg button{border:0;background:none;border-radius:8px;padding:7px 14px;font-size:14px;font-weight:500;color:var(--muted)}
-.tabs button.on,.seg button.on{background:var(--accent);color:#fff}
+.tabs button.on,.seg button.on{background:var(--accent);color:var(--on-accent)}
 .seg{flex-wrap:wrap}
 .seg button{padding:6px 11px;font-size:13px}
 .tab{display:grid;gap:20px}
@@ -146,12 +171,27 @@ li.up .r{display:block;font-size:13px;color:var(--muted);font-weight:400;overflo
 </style>
 </head>
 <body>
+<canvas id="fx" aria-hidden="true"></canvas>
 <div class="wrap">
   <div class="topbar">
     <span class="brand">Delishki</span>
+    <div class="topright">
+    <div class="themewrap">
+      <button type="button" id="themeBtn" aria-label="Тема оформления" aria-haspopup="true" aria-expanded="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 3a9 9 0 1 0 0 18c1.1 0 1.6-.9 1.2-1.8l-.4-.9c-.5-1.1.3-2.3 1.5-2.3H17a4 4 0 0 0 4-4c0-5-4-9-9-9z"/><circle cx="7.5" cy="11" r="1.2" fill="currentColor"/><circle cx="10" cy="7" r="1.2" fill="currentColor"/><circle cx="15" cy="7.5" r="1.2" fill="currentColor"/></svg>
+      </button>
+      <div class="thememenu" id="themeMenu" hidden>
+        <button type="button" data-th="auto"><span class="sw" style="background:linear-gradient(135deg,#eef1f6 50%,#10141c 50%)"></span>Как в системе</button>
+        <button type="button" data-th="light"><span class="sw" style="background:#eef1f6"><i style="background:#2f4fd8;margin:6px;border-radius:3px;grid-column:1/-1"></i></span>Светлая</button>
+        <button type="button" data-th="dark"><span class="sw" style="background:#10141c"><i style="background:#7d95ff;margin:6px;border-radius:3px;grid-column:1/-1"></i></span>Тёмная</button>
+        <button type="button" data-th="xmas"><span class="sw" style="background:#0e2a1f"><i style="background:#e2453b"></i><i style="background:#f3c552"></i></span>Рождество</button>
+        <button type="button" data-th="halloween"><span class="sw" style="background:#150f1f"><i style="background:#ff7a1a"></i><i style="background:#9fe14a"></i></span>Хеллоуин</button>
+      </div>
+    </div>
     <div class="tabs" role="tablist">
       <button type="button" data-tab="plan" class="on" role="tab">План</button>
       <button type="button" data-tab="stats" role="tab">Статистика</button>
+    </div>
     </div>
   </div>
   <div class="tab" id="tabPlan">
@@ -250,7 +290,7 @@ const $ = s => document.querySelector(s);
 const MONTHS = ["января","февраля","марта","апреля","мая","июня","июля","августа","сентября","октября","ноября","декабря"];
 const WD = ["Воскресенье","Понедельник","Вторник","Среда","Четверг","Пятница","Суббота"];
 const WDS = ["Вс","Пн","Вт","Ср","Чт","Пт","Сб"];
-const CHECK = '<svg viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3.2 3L13 4.5" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const CHECK = '<svg viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3.2 3L13 4.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
 const iso = d => d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
 const parse = s => { const [y,m,d] = s.split("-").map(Number); return new Date(y,m-1,d); };
@@ -480,7 +520,7 @@ $("#importFile").onchange = async e=>{
   e.target.value = "";
 };
 // auto-update: when the page is opened, fetch a fresh copy and reload if a newer version was published
-const APP_VERSION = "2026-10-15b";
+const APP_VERSION = "2026-10-15c";
 async function checkUpdate(){
   try{
     const r = await fetch(location.pathname+"?check="+Date.now(), {cache:"no-store"});
@@ -490,6 +530,62 @@ async function checkUpdate(){
 }
 checkUpdate();
 document.addEventListener("visibilitychange", ()=>{ if(document.visibilityState==="visible") checkUpdate(); });
+
+// themes
+const THEME_COLORS = {light:"#eef1f6", dark:"#10141c", xmas:"#0e2a1f", halloween:"#150f1f"};
+let theme = "auto";
+function applyTheme(t){
+  theme = t;
+  if(t==="auto") document.documentElement.removeAttribute("data-theme");
+  else document.documentElement.setAttribute("data-theme", t);
+  const sysDark = matchMedia("(prefers-color-scheme: dark)").matches;
+  document.querySelector('meta[name="theme-color"]').content = THEME_COLORS[t==="auto" ? (sysDark?"dark":"light") : t];
+  document.querySelectorAll("#themeMenu button").forEach(b=>b.classList.toggle("on", b.dataset.th===t));
+  try{ localStorage.setItem("delishki-theme", t); }catch(_){}
+  startFx();
+}
+$("#themeBtn").onclick = e=>{ e.stopPropagation(); const m = $("#themeMenu"); m.hidden = !m.hidden; $("#themeBtn").setAttribute("aria-expanded", !m.hidden); };
+$("#themeMenu").onclick = e=>{ const b = e.target.closest("button[data-th]"); if(b){ applyTheme(b.dataset.th); $("#themeMenu").hidden = true; } };
+document.addEventListener("click", e=>{ if(!e.target.closest(".themewrap")) $("#themeMenu").hidden = true; });
+
+// festive background: snow for Christmas, bats for Halloween
+let fxRaf = 0;
+function startFx(){
+  cancelAnimationFrame(fxRaf);
+  const c = $("#fx"), ctx = c.getContext("2d");
+  const fit = ()=>{ const r = devicePixelRatio||1; c.width = innerWidth*r; c.height = innerHeight*r; ctx.setTransform(r,0,0,r,0,0); };
+  fit(); ctx.clearRect(0,0,innerWidth,innerHeight); onresize = fit;
+  if(theme!=="xmas" && theme!=="halloween") return;
+  const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const xmas = theme==="xmas", N = xmas ? 70 : 9;
+  const P = Array.from({length:N},()=>({x:Math.random()*innerWidth, y:Math.random()*innerHeight, r: xmas ? 1+Math.random()*2.5 : 14+Math.random()*12,
+    vy: xmas ? .3+Math.random()*.7 : -(.15+Math.random()*.3), vx: xmas ? 0 : .3+Math.random()*.5, ph:Math.random()*6.28}));
+  let t = 0;
+  const frame = ()=>{
+    t += 1; ctx.clearRect(0,0,innerWidth,innerHeight);
+    for(const p of P){
+      if(xmas){
+        ctx.fillStyle = "rgba(255,255,255,.75)"; ctx.beginPath(); ctx.arc(p.x + Math.sin(t/60+p.ph)*12, p.y, p.r, 0, 6.28); ctx.fill();
+        if(!still){ p.y += p.vy; if(p.y > innerHeight+5){ p.y = -5; p.x = Math.random()*innerWidth; } }
+      }else{
+        const flap = Math.sin(t/6+p.ph), s = p.r, x = p.x, y = p.y + Math.sin(t/40+p.ph)*10;
+        ctx.fillStyle = "rgba(255,150,60,.22)"; ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.quadraticCurveTo(x - s*.5, y - s*.6*flap, x - s, y - s*.15*flap);
+        ctx.quadraticCurveTo(x - s*.6, y + s*.05, x - s*.45, y + s*.2);
+        ctx.quadraticCurveTo(x - s*.2, y + s*.05, x, y + s*.3);
+        ctx.quadraticCurveTo(x + s*.2, y + s*.05, x + s*.45, y + s*.2);
+        ctx.quadraticCurveTo(x + s*.6, y + s*.05, x + s, y - s*.15*flap);
+        ctx.quadraticCurveTo(x + s*.5, y - s*.6*flap, x, y); ctx.fill();
+        if(!still){ p.x += p.vx; p.y += p.vy; if(p.x > innerWidth+40 || p.y < -40){ p.x = -40; p.y = innerHeight*(.3+Math.random()*.7); } }
+      }
+    }
+    if(!still) fxRaf = requestAnimationFrame(frame);
+  };
+  frame();
+}
+let savedTheme = "auto"; try{ savedTheme = localStorage.getItem("delishki-theme") || "auto"; }catch(_){}
+applyTheme(THEME_COLORS[savedTheme] || savedTheme==="auto" ? savedTheme : "auto");
 
 load();
 let startTab = "plan"; try{ startTab = localStorage.getItem("delishki-tab")==="stats" ? "stats" : "plan"; }catch(_){}
