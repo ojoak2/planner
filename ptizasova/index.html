@@ -1,3 +1,10 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#F2B233">
+<meta name="apple-mobile-web-app-capable" content="yes">
 <title>PTIZASOVA</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -27,6 +34,9 @@
   --lock:#3A3D52; --heart:#FF6B6B; color-scheme:dark}
 
 *{box-sizing:border-box}
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0}
+[hidden]{display:none!important}
 html,body{height:100%}
 body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.5;-webkit-tap-highlight-color:transparent}
 button{font:inherit;color:inherit;cursor:pointer}
@@ -73,7 +83,11 @@ button.stat{font-weight:700}
 .seg button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 0 var(--line)}
 .notice{font-size:14px;border:1px dashed var(--line);border-radius:14px;padding:10px 14px;color:var(--muted);background:var(--surface)}
 .notice b{color:var(--ink)}
-.section{display:grid;gap:10px;padding-block:14px 0}
+.section{display:grid;grid-template-columns:minmax(0,1fr);gap:10px;padding-block:14px 0}
+a{color:var(--accent-text);font-weight:600}
+.top{min-width:0}
+@media (max-width:440px){.brand b{font-size:15px}.stat{padding:5px 7px;font-size:13px;gap:3px}.stats{gap:4px}.brand svg{width:28px;height:28px}}
+@media (max-width:360px){.brand b{display:none}}
 .courses{display:grid;gap:10px}
 .course{display:grid;grid-template-columns:56px 1fr auto;gap:12px;align-items:center;text-align:left;background:var(--surface);border:2px solid var(--line);border-radius:16px;padding:10px 12px;box-shadow:0 3px 0 var(--line)}
 .course:hover{border-color:var(--accent)}
@@ -211,6 +225,8 @@ button.stat{font-weight:700}
 .row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
 </style>
 
+</head>
+<body>
 <div class="wrap" id="app"></div>
 <input type="file" id="frameFile" accept="image/jpeg,image/png,image/webp,image/gif" hidden>
 
@@ -231,6 +247,7 @@ const I = {
   lock:'<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="10.5" width="14" height="10" rx="2.5" fill="currentColor"/><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5" fill="none" stroke="currentColor" stroke-width="2.4"/></svg>',
   star:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z" fill="currentColor"/></svg>',
   reel:'<svg class="reel" viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="44" fill="none" stroke="currentColor" stroke-width="6"/><circle cx="50" cy="50" r="7" fill="currentColor"/><circle cx="50" cy="24" r="11" fill="currentColor"/><circle cx="50" cy="76" r="11" fill="currentColor"/><circle cx="24" cy="50" r="11" fill="currentColor"/><circle cx="76" cy="50" r="11" fill="currentColor"/></svg>',
+  gear:'<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
   camera:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h3l1.5-2h7L17 7h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="12" cy="13" r="3.6" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>'
 };
 
@@ -256,18 +273,83 @@ function streakNow(){ const y = new Date(Date.now()-864e5).toISOString().slice(0
 let route = { name:"home" };
 
 /* ---------- Claude ---------- */
-let AI = "pending", canImages = false;
-const aiReady = (async () => {
+/* Two ways to reach Claude:
+   1) inside claude.ai (artifact) — the viewer's Claude account via window.claude;
+   2) anywhere else (GitHub Pages, phone home screen) — the user's own Anthropic API key, pay-as-you-go. */
+let CS = "pending", claudeSample = null, canImages = false;
+const claudeReady = (async () => {
   try {
-    if (!window.claude || !window.claude.use) { AI = "off"; return null; }
+    if (!window.claude || !window.claude.use) return;
     const s = await window.claude.use("sample");
-    if (!s) { AI = "off"; return null; }
+    if (!s) return;
     const lim = await s.limits().catch(() => null);
     canImages = !!(lim && lim.images);
-    AI = "on"; return s;
-  } catch(e){ AI = "off"; return null; }
-  finally { setTimeout(() => { if (route.name === "home") render(); }, 0); }
+    claudeSample = s;
+  } catch(e){}
+  finally { CS = "done"; setTimeout(() => { if (route.name === "home") render(); }, 0); }
 })();
+const KEY_SLOT = "ptizasova.apikey";
+function apiKey(){ try { return localStorage.getItem(KEY_SLOT) || ""; } catch(e){ return ""; } }
+function setApiKey(k){ try { if (k) localStorage.setItem(KEY_SLOT, k); else localStorage.removeItem(KEY_SLOT); } catch(e){} }
+function aiMode(){ if (claudeSample) return "claude"; if (apiKey()) return "api"; return CS === "pending" ? "pending" : "off"; }
+async function engine(){
+  await claudeReady;
+  if (claudeSample) return claudeSample;
+  const k = apiKey();
+  return k ? { json: (p, o) => apiJson(k, p, o || {}) } : null;
+}
+function parseLoose(t){
+  t = String(t || "").trim();
+  try { return JSON.parse(t); } catch(e){}
+  const f = t.match(/```(?:json)?\s*([\s\S]*?)```/); if (f) { try { return JSON.parse(f[1]); } catch(e){} }
+  const a = t.search(/[\[{]/), b = Math.max(t.lastIndexOf("}"), t.lastIndexOf("]"));
+  if (a >= 0 && b > a) { try { return JSON.parse(t.slice(a, b + 1)); } catch(e){} }
+  throw { code:"invalid_json", text:t };
+}
+function blobToB64(b){ return new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(",")[1]); r.onerror = rej; r.readAsDataURL(b); }); }
+async function apiJson(key, prompt, o){
+  const quick = o.modelTier === "quick";
+  const content = [];
+  for (const b of (o.images ? [].concat(o.images) : [])) content.push({ type:"image", source:{ type:"base64", media_type:b.type || "image/jpeg", data: await blobToB64(b) } });
+  content.push({ type:"text", text: prompt + "\n\nОтвет будет разобран программой: верни только JSON, без текста до и после." });
+  const body = quick
+    ? { model:"claude-haiku-5-5", max_tokens:1024, stream:true, output_config:{ effort:"low" }, messages:[{ role:"user", content }] }
+    : { model:"claude-opus-5-5", max_tokens:32000, stream:true, output_config:{ effort:"low" }, fallbacks:"default", messages:[{ role:"user", content }] };
+  const headers = { "content-type":"application/json", "x-api-key":key, "anthropic-version":"2023-06-01", "anthropic-dangerous-direct-browser-access":"true" };
+  if (!quick) headers["anthropic-beta"] = "server-side-fallback-2026-07-01";
+  let res;
+  try { res = await fetch("https://api.anthropic.com/v1/messages", { method:"POST", headers, body:JSON.stringify(body), signal:o.signal }); }
+  catch(e){ throw { code: e && e.name === "AbortError" ? "cancelled" : "network" }; }
+  if (!res.ok) {
+    let msg = ""; try { msg = (await res.json()).error.message || ""; } catch(e){}
+    const code = res.status === 401 || res.status === 403 ? "bad_key"
+      : res.status === 429 ? "rate_limited"
+      : res.status === 400 && /credit|balance|billing/i.test(msg) ? "no_credit"
+      : res.status === 529 || res.status >= 500 ? "overloaded" : "upstream_error";
+    throw { code, message:msg };
+  }
+  const reader = res.body.getReader(), dec = new TextDecoder();
+  let buf = "", text = "", stop = "";
+  try {
+    for (;;) {
+      const { done, value } = await reader.read(); if (done) break;
+      buf += dec.decode(value, { stream:true });
+      let i;
+      while ((i = buf.indexOf("\n\n")) >= 0) {
+        const ev = buf.slice(0, i); buf = buf.slice(i + 2);
+        const line = ev.split("\n").find(l => l.startsWith("data:")); if (!line) continue;
+        let d; try { d = JSON.parse(line.slice(5)); } catch(e){ continue; }
+        if (d.type === "content_block_delta" && d.delta && d.delta.type === "text_delta") {
+          text += d.delta.text; if (o.onText) { try { o.onText({ text, delta:d.delta.text }); } catch(e){} }
+        } else if (d.type === "message_delta" && d.delta && d.delta.stop_reason) stop = d.delta.stop_reason;
+        else if (d.type === "error") throw { code: d.error && d.error.type === "overloaded_error" ? "overloaded" : "upstream_error", message: d.error && d.error.message };
+      }
+    }
+  } catch(e){ if (e && e.name === "AbortError") throw { code:"cancelled" }; throw e && e.code ? e : { code:"network" }; }
+  if (stop === "refusal") throw { code:"refused" };
+  if (!text.trim()) throw { code:"empty_completion" };
+  return parseLoose(text);
+}
 const ERR = {
   not_granted:"Ты не разрешил странице обращаться к Claude, поэтому новые уроки не создаются. Демо-уроки работают.",
   sampling_disabled:"Claude недоступен для этого аккаунта. Демо-уроки работают.",
@@ -277,7 +359,11 @@ const ERR = {
   invalid_json:"Ответ пришёл в неправильном формате. Нажми «Попробовать снова».",
   image_rejected:"Этот файл не подходит. Загрузи JPEG, PNG или WebP поменьше.",
   images_unavailable:"В этом просмотре нельзя отправлять картинки.",
-  empty_completion:"Claude ничего не ответил. Попробуй снова."
+  empty_completion:"Claude ничего не ответил. Попробуй снова.",
+  bad_key:"Ключ API не подошёл. Проверь его в настройках (шестерёнка вверху).",
+  no_credit:"На балансе Anthropic закончились деньги. Пополни его на console.anthropic.com.",
+  overloaded:"Серверы Claude сейчас перегружены. Попробуй через минуту.",
+  network:"Нет связи с сервером Claude. Проверь интернет и попробуй снова."
 };
 const errText = e => ERR[e && e.code] || "Связь с Claude прервалась. Попробуй снова.";
 
@@ -472,6 +558,7 @@ function header(){
       <span class="stat" title="Дней подряд">${I.fire}${streakNow()}</span>
       <span class="stat" title="Опыт">${I.bolt}${S.xp}</span>
       <button class="stat" data-act="vocab" title="Мой словарь">${I.book}${S.vocab.length}</button>
+      <button class="stat" data-act="settings" title="Настройки" aria-label="Настройки">${I.gear}</button>
     </div>
   </div>`;
 }
@@ -486,6 +573,7 @@ function render(){
   else if (route.name === "result") app.innerHTML = resultView();
   else if (route.name === "vocab") app.innerHTML = header() + vocabView();
   else if (route.name === "fail") app.innerHTML = failView();
+  else if (route.name === "settings") app.innerHTML = header() + settingsView();
   const q = $("#q"); if (q && route.focus) { q.focus(); route.focus = false; }
 }
 
@@ -493,8 +581,8 @@ function render(){
 function homeView(){
   const examples = ["Пацаны","Во все тяжкие","Друзья","Шрек","Гарри Поттер","Офис"];
   const list = S.order.map(k => S.courses[k]).filter(Boolean);
-  const aiNote = AI === "off"
-    ? `<div class="notice"><b>Сейчас работают демо-уроки</b> по «Пацанам» и «Словам». Новые уроки по любому сериалу создаёт Claude, когда приложение открыто в Claude.</div>`
+  const aiNote = aiMode() === "off"
+    ? `<div class="notice"><b>Сейчас работают демо-уроки</b> по «Пацанам» и «Словам». Чтобы создавать уроки по любому сериалу, <button class="link" data-act="settings" style="padding:0">подключи ключ Claude API</button>.</div>`
     : "";
   return `<section class="hero">
     <h1>Учи английский по любимым сценам</h1>
@@ -518,10 +606,10 @@ function homeView(){
     ${list.length ? `<div class="courses">${list.map(courseCard).join("")}</div>`
       : `<div class="notice">Здесь появятся твои курсы. Начни с «Пацанов» или «Слов» выше.</div>`}
   </section>
-  ${AI !== "off" ? `<section class="section">
+  ${aiMode() !== "off" ? `<section class="section">
     <div class="eyebrow">Свой кадр</div>
-    <button class="upload" data-act="upload" ${AI==="on" && !canImages ? "disabled" : ""}>${I.camera}
-      <div><b>Загрузить скриншот из фильма</b><span>${AI==="on" && !canImages ? "В этом просмотре картинки отправлять нельзя." : "Claude узнает сцену и сделает 10 заданий по этому кадру."}</span></div>
+    <button class="upload" data-act="upload" ${aiMode()==="claude" && !canImages ? "disabled" : ""}>${I.camera}
+      <div><b>Загрузить скриншот из фильма</b><span>${aiMode()==="claude" && !canImages ? "В этом просмотре картинки отправлять нельзя." : "Claude узнает сцену и сделает 10 заданий по этому кадру."}</span></div>
     </button>
   </section>` : ""}`;
 }
@@ -583,11 +671,11 @@ async function startLesson(key, n){
   const c = S.courses[key]; if (!c) return;
   const cached = c.lessons && c.lessons[n];
   if (cached) return play(c, n, cached);
-  const sample = await aiReady;
+  const sample = await engine();
   if (!sample) {
     const demo = demoFor(c);
     if (demo && (n === 1 || c.mode === "words")) return play(c, n, demo);
-    return go({ name:"course", key, error: demo ? "В демо-режиме доступен только первый урок. Новые уроки создаёт Claude, когда приложение открыто в Claude." : "Уроки по этому запросу создаёт Claude, а он сейчас недоступен. Попробуй демо: «Пацаны» или «Слова»." });
+    return go({ name:"course", key, error: demo ? "В демо-режиме доступен только первый урок. Чтобы открыть следующие, подключи ключ Claude API в настройках (шестерёнка вверху)." : "Уроки по этому запросу создаёт Claude. Подключи ключ Claude API в настройках (шестерёнка вверху) или попробуй демо: «Пацаны» и «Слова»." });
   }
   genCtl = new AbortController();
   go({ name:"loading", key, n, found:0, mode:c.mode });
@@ -766,7 +854,7 @@ async function check(){
     const best = Math.max(...t.accepted.map(a => sim(a, got)));
     if (best >= 0.86) { ok = true; close = best < 1; right = best < 1 ? t.accepted[0] : ""; }
     else if (L.mode !== "words") {
-      const sample = await aiReady;
+      const sample = await engine();
       if (sample) {
         L.state = "checking"; drawBar();
         try {
@@ -887,6 +975,26 @@ function vocabView(){
   </section>`;
 }
 
+function settingsView(){
+  const k = apiKey(), m = aiMode();
+  return `<button class="link" data-act="home">← На главную</button>
+  <section class="section">
+    <h2 style="font-size:24px">Настройки</h2>
+    <div class="notice">${m === "claude" ? "<b>Сейчас уроки создаёт Claude через твой аккаунт claude.ai.</b> Ключ API нужен, только если открываешь приложение вне Claude."
+      : m === "api" ? "<b>Ключ подключён.</b> Новые уроки создаются через Claude API."
+      : "<b>Ключ не подключён.</b> Работают только демо-уроки."}</div>
+    <div class="eyebrow">Ключ Claude API</div>
+    <p class="muted" style="margin:0">С ключом приложение работает где угодно и не зависит от подписки Claude. Деньги списываются с баланса на console.anthropic.com за каждый запрос, примерно 10–20 центов за урок, проверка перевода — доли цента. Ключ хранится только в этом браузере и отправляется только на api.anthropic.com.</p>
+    <form id="keyForm" class="search" autocomplete="off">
+      <input id="apikey" name="apikey" type="password" placeholder="sk-ant-…" aria-label="Ключ Claude API" value="${esc(k)}">
+      <button class="btn" type="submit">Сохранить</button>
+    </form>
+    ${k ? `<button class="link" data-act="delkey">Удалить ключ</button>` : ""}
+    <p class="muted" style="margin:0;font-size:14px">Где взять ключ: зайди на <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">console.anthropic.com</a> → API Keys → Create Key, пополни баланс в разделе Billing.</p>
+    ${route.saved ? `<div class="notice" role="status"><b>Ключ сохранён.</b></div>` : ""}
+  </section>`;
+}
+
 /* ---------- frame upload ---------- */
 function dataUrlToBlob(u){
   const [head, b64] = u.split(","); const bin = atob(b64); const a = new Uint8Array(bin.length);
@@ -912,6 +1020,7 @@ async function onFrame(file){
 /* ---------- events ---------- */
 document.addEventListener("submit", e => {
   if (e.target.id === "searchForm") { e.preventDefault(); openCourse(e.target.q.value); }
+  if (e.target.id === "keyForm") { e.preventDefault(); setApiKey(e.target.apikey.value.trim()); go({ name:"settings", saved:true }); }
 });
 document.addEventListener("click", e => {
   const b = e.target.closest("button"); if (!b) return;
@@ -935,6 +1044,8 @@ document.addEventListener("click", e => {
   switch (d.act) {
     case "home": return go({ name:"home" });
     case "vocab": return go({ name:"vocab" });
+    case "settings": return go({ name:"settings" });
+    case "delkey": setApiKey(""); return go({ name:"settings" });
     case "upload": return $("#frameFile").click();
     case "stop": if (genCtl) genCtl.abort(); return;
     case "check": return check();
@@ -949,3 +1060,5 @@ $("#frameFile").addEventListener("change", e => { const f = e.target.files[0]; e
 render();
 })();
 </script>
+</body>
+</html>
