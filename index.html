@@ -10,7 +10,8 @@
 <link rel="apple-touch-icon" href="delishki-icon-180.png?v=3">
 <link rel="icon" type="image/png" href="delishki-icon-512.png?v=3">
 <title>Delishki</title>
-<script>try{var t=localStorage.getItem("delishki-theme");if(t&&t!=="auto")document.documentElement.setAttribute("data-theme",t);}catch(e){}</script>
+<script>document.documentElement.classList.add("checking");setTimeout(function(){document.documentElement.classList.remove("checking")},1500);
+try{var t=localStorage.getItem("delishki-theme");if(t&&t!=="auto")document.documentElement.setAttribute("data-theme",t);}catch(e){}</script>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700&family=Golos+Text:wght@400;500;600&family=JetBrains+Mono:wght@500&family=Creepster&family=Mountains+of+Christmas:wght@700&display=swap">
 <style>
 /* Layout: day header with big percent + week strip, then two columns — day plan | shared task pool */
@@ -37,6 +38,7 @@
   --accent:#ff7a1a; --accent-soft:#3d2414; --done:#9fe14a; --done-soft:#24361a; --danger:#ff6b6b;
   --on-accent:#1b0f05; --on-done:#14200a; --brand-font:"Creepster",var(--display); color-scheme:dark}
 *{box-sizing:border-box}
+html.checking .wrap,html.checking #fx,html.checking #garland{visibility:hidden}
 html{overflow-anchor:none;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 body{margin:0;-webkit-text-size-adjust:100%}
 [hidden]{display:none!important}
@@ -777,13 +779,16 @@ $("#importFile").onchange = async e=>{
   e.target.value = "";
 };
 // auto-update: when the page is opened, fetch a fresh copy and reload if a newer version was published
-const APP_VERSION = "2026-10-15f";
+const APP_VERSION = "2026-10-15g";
+// While the first check runs the page stays hidden (only the theme background shows), so an outdated copy never flashes.
 async function checkUpdate(){
   try{
-    const r = await fetch(location.pathname+"?check="+Date.now(), {cache:"no-store"});
+    const ctl = new AbortController(); setTimeout(()=>ctl.abort(), 1400);
+    const r = await fetch(location.pathname+"?check="+Date.now(), {cache:"no-store", signal:ctl.signal});
     const m = (await r.text()).match(/APP_VERSION = "([^"]+)"/);
-    if(m && m[1] !== APP_VERSION && !new URLSearchParams(location.search).has("v"+m[1])) location.replace(location.pathname+"?v"+m[1]);
+    if(m && m[1] !== APP_VERSION && !new URLSearchParams(location.search).has("v"+m[1])){ location.replace(location.pathname+"?v"+m[1]); return; }
   }catch(_){}
+  document.documentElement.classList.remove("checking");
 }
 checkUpdate();
 document.addEventListener("visibilitychange", ()=>{ if(document.visibilityState==="visible") checkUpdate(); });
