@@ -65,7 +65,7 @@ form.add{display:flex;gap:8px}
 form.add input{flex:1;min-width:0;border:1px solid var(--line);background:var(--bg);color:var(--fg);border-radius:9px;padding:10px 12px;font:inherit}
 form.add button{border:0;background:var(--accent);color:#fff;border-radius:9px;padding:0 14px;font-weight:600;white-space:nowrap}
 ul{list-style:none;margin:0;padding:0;display:grid;gap:4px}
-li.task{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;padding:8px 6px;border-radius:9px}
+li.task{display:grid;grid-template-columns:auto 1fr auto auto;gap:10px;align-items:center;padding:8px 6px;border-radius:9px}
 li.task:hover{background:var(--bg)}
 .chk{width:24px;height:24px;border-radius:7px;border:2px solid var(--line);background:transparent;display:grid;place-items:center;padding:0}
 .chk svg{width:14px;height:14px;opacity:0}
@@ -73,6 +73,18 @@ li.task.done .chk{background:var(--done);border-color:var(--done)}
 li.task.done .chk svg{opacity:1}
 li.task.done .t{color:var(--muted);text-decoration:line-through;text-decoration-color:var(--muted)}
 .t{min-width:0;overflow-wrap:anywhere}
+.tb{min-width:0;display:grid;gap:5px}
+.mini{display:block;height:4px;border-radius:2px;background:var(--line);overflow:hidden;max-width:220px}
+.mini i{display:block;height:100%;background:var(--accent);border-radius:2px}
+.pc{border:1px solid var(--line);background:var(--bg);color:var(--muted);border-radius:7px;padding:3px 8px;font:500 12px var(--mono);min-width:48px;font-variant-numeric:tabular-nums}
+.pc.part{border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}
+li.task.done .pc{border-color:transparent;background:var(--done-soft);color:var(--done)}
+li.task.part .chk{border-color:var(--accent);background:linear-gradient(to top,var(--accent-soft) var(--p),transparent var(--p))}
+.pedit{grid-column:1/-1;display:grid;gap:10px;padding:10px 4px 4px}
+.pedit input[type=range]{width:100%;accent-color:var(--accent);height:28px}
+.quick{display:flex;gap:6px;flex-wrap:wrap}
+.quick button{flex:1;min-width:48px;border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:7px 0;font:500 13px var(--mono)}
+.quick button.on{border-color:var(--accent);background:var(--accent);color:#fff}
 .del{border:0;background:none;color:var(--muted);opacity:0;padding:4px 6px;border-radius:6px;font-size:16px}
 li:hover .del,.del:focus-visible{opacity:1}
 @media (hover:none){.del{opacity:.6}}
@@ -250,11 +262,15 @@ let plan = [];   // {id,title,date,done,createdAt,poolId?}
 let pool = [];   // {id,title,createdAt}
 let readOnly = false;
 
+const prog = t => typeof t.progress === "number" ? t.progress : (t.done ? 100 : 0);
+let editing = null;   // id of task whose progress editor is open
 function stats(date){
   const items = plan.filter(t => t.date === date);
-  const done = items.filter(t => t.done).length;
-  return {items, done, total: items.length, pct: items.length ? Math.round(done/items.length*100) : 0};
+  const done = items.filter(t => prog(t) === 100).length;
+  const sum = items.reduce((a,t)=>a+prog(t),0);
+  return {items, done, total: items.length, pct: items.length ? Math.round(sum/items.length) : 0};
 }
+function setProg(t, v){ v = Math.max(0, Math.min(100, Math.round(v))); t.progress = v; t.done = v === 100; }
 function plural(n, a, b, c){ const m10=n%10, m100=n%100; return m10===1&&m100!==11?a:(m10>=2&&m10<=4&&(m100<10||m100>=20)?b:c); }
 
 function render(){
@@ -263,10 +279,10 @@ function render(){
   $("#rel").textContent = diff===0?"сегодня":diff===1?"завтра":diff===-1?"вчера":"";
   const s = stats(sel);
   $("#pctNum").innerHTML = s.pct+"<small>%</small>";
-  $("#pctSub").textContent = s.total ? `выполнено ${s.done} из ${s.total}` : "нет задач";
+  $("#pctSub").textContent = s.total ? `готово ${s.done} из ${s.total}` + (s.items.some(t=>prog(t)>0&&prog(t)<100) ? " · ещё "+s.items.filter(t=>prog(t)>0&&prog(t)<100).length+" в процессе" : "") : "нет задач";
   const bar = $("#bar");
   bar.classList.toggle("empty", !s.total);
-  bar.innerHTML = s.total ? s.items.slice().sort((a,b)=>b.done-a.done).map(t=>`<span class="${t.done?"on":""}"></span>`).join("") : "<span></span>";
+  bar.innerHTML = s.total ? s.items.slice().sort((a,b)=>prog(b)-prog(a)).map(t=>`<span style="background:linear-gradient(to right,var(--done) ${prog(t)}%,var(--line) ${prog(t)}%)"></span>`).join("") : "<span></span>";
 
   // week strip (Mon–Sun containing selected day)
   const dow = (d.getDay()+6)%7, mon = addDays(sel,-dow);
@@ -278,13 +294,18 @@ function render(){
       <span class="wp">${st.total?st.pct+"%":"—"}</span></button>`;
   }).join("");
 
-  const items = s.items.slice().sort((a,b)=> (a.done-b.done) || ((a.createdAt||0)-(b.createdAt||0)));
+  const items = s.items.slice().sort((a,b)=> ((prog(a)===100)-(prog(b)===100)) || ((a.createdAt||0)-(b.createdAt||0)));
   $("#planCount").textContent = s.total ? `${s.done}/${s.total}` : "";
   $("#planList").innerHTML = items.length ? items.map(t=>`
-    <li class="task ${t.done?"done":""}" data-id="${t.id}">
-      <button class="chk" data-act="toggle" aria-label="${t.done?"Снять отметку":"Отметить выполненной"}">${CHECK}</button>
-      <span class="t"></span>
+    <li class="task ${prog(t)===100?"done":prog(t)>0?"part":""}" data-id="${t.id}" style="--p:${prog(t)}%">
+      <button class="chk" data-act="toggle" aria-label="${prog(t)===100?"Снять отметку":"Отметить выполненной"}">${CHECK}</button>
+      <span class="tb"><span class="t"></span>${prog(t)>0&&prog(t)<100?`<span class="mini"><i style="width:${prog(t)}%"></i></span>`:""}</span>
+      <button class="pc ${prog(t)>0&&prog(t)<100?"part":""}" data-act="pct" aria-label="Указать процент выполнения" aria-expanded="${editing===t.id}">${prog(t)}%</button>
       <button class="del" data-act="del" aria-label="Удалить">×</button>
+      ${editing===t.id?`<div class="pedit">
+        <input type="range" id="rng-${t.id}" min="0" max="100" step="5" value="${prog(t)}" aria-label="Процент выполнения">
+        <div class="quick">${[0,25,50,75,100].map(v=>`<button type="button" data-act="set" data-v="${v}" class="${prog(t)===v?"on":""}">${v}%</button>`).join("")}</div>
+      </div>`:""}
     </li>`).join("") : `<li class="empty-note">На этот день задач нет. Добавьте задачу выше или выберите из общего списка.</li>`;
   items.forEach((t,i)=>{ $("#planList").children[i].querySelector(".t").textContent = t.title; });
 
@@ -320,7 +341,7 @@ function save(){ try{ localStorage.setItem(KEY, JSON.stringify({plan,pool})); st
 const uid = () => Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 function status(t){ $("#status").textContent = t; }
 
-$("#prev").onclick = ()=>{ sel = addDays(sel,-1); render(); };
+$("#prev").onclick = ()=>{ editing = null; sel = addDays(sel,-1); render(); };
 $("#next").onclick = ()=>{ sel = addDays(sel,1); render(); };
 $("#today").onclick = ()=>{ sel = todayIso(); render(); };
 $("#wprev").onclick = ()=>{ sel = addDays(sel,-7); render(); };
@@ -352,11 +373,11 @@ function renderStats(){
   const per = days.map(d=>({d, ...stats(d)}));
   const active = per.filter(x=>x.total);
   const done = active.reduce((a,x)=>a+x.done,0), total = active.reduce((a,x)=>a+x.total,0);
-  const perfect = active.filter(x=>x.done===x.total).length;
+  const perfect = active.filter(x=>x.pct===100).length;
   $("#rangeLabel").textContent = shortDate(start)+" — "+shortDate(t0);
   $("#stAvg").innerHTML = active.length ? Math.round(active.reduce((a,x)=>a+x.pct,0)/active.length)+"<small>%</small>" : "—";
   $("#stDone").innerHTML = total ? done+"<small> из "+total+"</small>" : "—";
-  $("#stDoneSub").textContent = total ? Math.round(done/total*100)+"% всех задач" : "задач в этот период нет";
+  $("#stDoneSub").textContent = total ? "задач закрыто на 100%" : "задач в этот период нет";
   $("#stPerfect").textContent = perfect;
   $("#stPerfectSub").textContent = active.length ? "из "+active.length+" "+plural(active.length,"дня","дней","дней")+" с задачами" : "";
   // streak: consecutive 100% days ending today (today counts only if already 100%)
@@ -398,11 +419,11 @@ function renderStats(){
 
   // frequent tasks
   const groups = {};
-  plan.filter(t=>t.date>=start && t.date<=t0).forEach(t=>{ const k = t.title.trim().toLowerCase(); (groups[k] ||= {title:t.title, n:0, d:0}); groups[k].n++; if(t.done) groups[k].d++; });
+  plan.filter(t=>t.date>=start && t.date<=t0).forEach(t=>{ const k = t.title.trim().toLowerCase(); (groups[k] ||= {title:t.title, n:0, d:0}); groups[k].n++; groups[k].d += prog(t); });
   const top = Object.values(groups).sort((a,b)=>b.n-a.n || b.d-a.d).slice(0,6);
   $("#topTasks").innerHTML = top.length ? top.map(()=>`<div class="toptask"><span class="t"></span><span class="val"></span></div>`).join("") : `<p class="empty-note">Пока нет задач за этот период.</p>`;
   top.forEach((x,i)=>{ const row = $("#topTasks").children[i]; row.querySelector(".t").textContent = x.title;
-    row.querySelector(".val").textContent = `${x.d} из ${x.n} · ${Math.round(x.d/x.n*100)}%`; });
+    row.querySelector(".val").textContent = `${x.n} ${plural(x.n,"раз","раза","раз")} · в среднем ${Math.round(x.d/x.n)}%`; });
 }
 
 $("#week").onclick = e=>{ const b = e.target.closest("button[data-day]"); if(b){ sel = b.dataset.day; render(); } };
@@ -420,9 +441,24 @@ $("#addPool").onsubmit = e=>{
 $("#planList").onclick = e=>{
   const b = e.target.closest("button[data-act]"); if(!b) return;
   const id = b.closest("li").dataset.id, t = plan.find(x=>x.id===id); if(!t) return;
-  if(b.dataset.act==="toggle"){ t.done = !t.done; save(); }
+  if(b.dataset.act==="toggle"){ setProg(t, prog(t)===100 ? 0 : 100); save(); }
+  if(b.dataset.act==="pct"){ editing = editing===id ? null : id; render(); }
+  if(b.dataset.act==="set"){ setProg(t, +b.dataset.v); editing = null; save(); }
   if(b.dataset.act==="del"){ plan = plan.filter(x=>x.id!==id); save(); }
 };
+// slider: live preview while dragging, save on release
+$("#planList").addEventListener("input", e=>{
+  if(e.target.type!=="range") return;
+  const li = e.target.closest("li"), v = +e.target.value;
+  li.querySelector(".pc").textContent = v+"%";
+  li.querySelectorAll(".quick button").forEach(q=>q.classList.toggle("on", +q.dataset.v===v));
+});
+$("#planList").addEventListener("change", e=>{
+  if(e.target.type!=="range") return;
+  const t = plan.find(x=>x.id===e.target.closest("li").dataset.id); if(!t) return;
+  setProg(t, +e.target.value); save();
+});
+
 $("#poolList").onclick = e=>{
   const b = e.target.closest("button[data-act]"); if(!b) return;
   const id = b.closest("li").dataset.id, p = pool.find(x=>x.id===id); if(!p) return;
