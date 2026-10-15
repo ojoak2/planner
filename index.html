@@ -123,12 +123,56 @@ footer.backup .imp input{display:none}
 .thememenu button:hover{background:var(--bg)}
 .thememenu button.on{background:var(--accent-soft);font-weight:600}
 .sw{width:22px;height:22px;border-radius:6px;flex:none;border:1px solid rgba(128,128,128,.35);display:grid;grid-template-columns:1fr 1fr;overflow:hidden}
+.cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px}
+.cal .wh{font-size:11px;color:var(--muted);text-align:center;text-transform:uppercase;letter-spacing:.06em;padding-bottom:2px}
+.cal button{aspect-ratio:1/1;max-height:64px;min-width:0;border-radius:10px;border:1px solid var(--line);background:var(--surface);font:500 14px var(--mono);padding:0;position:relative;display:grid;place-items:center;font-variant-numeric:tabular-nums}
+.cal button.work{background:repeating-linear-gradient(135deg,var(--line) 0 3px,var(--surface) 3px 8px);color:var(--muted)}
+.cal button.off{background:var(--done-soft);border-color:var(--done)}
+.cal button.half{background:linear-gradient(135deg,var(--done-soft) 50%,var(--surface) 50%);border-color:var(--done)}
+.cal button.past{opacity:.35;cursor:default}
+.cal button.today{box-shadow:inset 0 0 0 2px var(--accent)}
+.cal button sup{position:absolute;top:3px;right:5px;font-size:9px;color:var(--accent)}
+.brush{display:flex;gap:6px;flex-wrap:wrap}
+.brush button{display:flex;align-items:center;gap:7px;border:1px solid var(--line);background:var(--surface);border-radius:9px;padding:7px 11px;font-size:13px}
+.brush button.on{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent);font-weight:600}
+.brush i{width:16px;height:16px;border-radius:4px;border:1px solid var(--line);display:block}
+.brush .bw{background:repeating-linear-gradient(135deg,var(--line) 0 3px,var(--surface) 3px 6px)}
+.brush .bo{background:var(--done-soft);border-color:var(--done)}
+.brush .bh{background:linear-gradient(135deg,var(--done-soft) 50%,var(--surface) 50%);border-color:var(--done)}
+.brush .bx{background:var(--surface)}
+.monthnav{display:flex;align-items:center;gap:8px;justify-content:space-between}
+.monthnav button{border:1px solid var(--line);background:var(--surface);border-radius:8px;width:36px;height:36px;font-size:18px}
+.monthnav b{font-family:var(--display);font-weight:500;font-size:16px}
+.patterns{display:flex;gap:6px;flex-wrap:wrap;align-items:center;font-size:13px;color:var(--muted)}
+.patterns button{border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:5px 10px;font-size:13px;color:var(--fg)}
+.patterns input{border:1px solid var(--line);background:var(--bg);color:var(--fg);border-radius:8px;padding:4px 6px;font:inherit;font-size:13px}
+.legend{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+.dtask{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;padding:6px 2px;border-bottom:1px solid var(--line)}
+.dtask:last-child{border-bottom:0}
+.dtask .t{font-size:14px}
+.dtask.zero .t{color:var(--muted)}
+.step{display:flex;align-items:center;gap:4px}
+.step button{width:32px;height:32px;border-radius:8px;border:1px solid var(--line);background:var(--surface);font-size:16px;padding:0}
+.step span{min-width:62px;text-align:center;font:500 13px var(--mono)}
+.caprow{display:flex;gap:16px;flex-wrap:wrap;font-size:14px}
+.caprow > div{display:flex;align-items:center;gap:8px}
+.gen{border:0;background:var(--accent);color:var(--on-accent);border-radius:10px;padding:12px 16px;font-weight:600;font-size:15px}
+.vdesc{font-size:13px;color:var(--muted);margin:0}
+.vday{display:grid;gap:4px;padding:8px 0;border-bottom:1px solid var(--line)}
+.vday:last-child{border-bottom:0}
+.vday h3{margin:0;font-size:13px;font-weight:600;display:flex;gap:8px;align-items:center}
+.badge{font-size:11px;font-weight:600;border-radius:6px;padding:2px 7px;background:var(--done-soft);color:var(--done)}
+.badge.half{background:var(--accent-soft);color:var(--accent)}
+.vrow{display:flex;align-items:center;gap:10px;font-size:14px;cursor:pointer;padding:3px 0}
+.vrow input{width:20px;height:20px;accent-color:var(--done);flex:none}
+.vrow.offc span{color:var(--muted);text-decoration:line-through}
+.warn{font-size:13px;color:var(--danger);margin:0}
 #fx{position:fixed;inset:0;pointer-events:none;z-index:0}
 .wrap{position:relative;z-index:1}
 .topbar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
 .brand{font-family:var(--brand-font);font-weight:700;font-size:18px;letter-spacing:-.02em}
 .tabs,.seg{display:flex;background:var(--surface);border:1px solid var(--line);border-radius:11px;padding:3px;gap:2px}
-.tabs button,.seg button{border:0;background:none;border-radius:8px;padding:7px 14px;font-size:14px;font-weight:500;color:var(--muted)}
+.tabs button,.seg button{border:0;background:none;border-radius:8px;padding:7px 11px;font-size:14px;font-weight:500;color:var(--muted)}
 .tabs button.on,.seg button.on{background:var(--accent);color:var(--on-accent)}
 .seg{flex-wrap:wrap}
 .seg button{padding:6px 11px;font-size:13px}
@@ -190,6 +234,7 @@ li.up .r{display:block;font-size:13px;color:var(--muted);font-weight:400;overflo
     </div>
     <div class="tabs" role="tablist">
       <button type="button" data-tab="plan" class="on" role="tab">План</button>
+      <button type="button" data-tab="month" role="tab">Месяц</button>
       <button type="button" data-tab="stats" role="tab">Статистика</button>
     </div>
     </div>
@@ -246,6 +291,63 @@ li.up .r{display:block;font-size:13px;color:var(--muted);font-weight:400;overflo
     </section>
     </div>
   </div>
+  </div>
+
+  <div class="tab" id="tabMonth" hidden>
+    <div><div class="eyebrow">Распределение задач</div><h1>План на месяц</h1></div>
+    <div class="cols">
+      <section class="panel">
+        <h2>1. Мой график</h2>
+        <p class="hint">Выберите тип дня и нажимайте на даты. Рабочие дни задачами не загружаются.</p>
+        <div class="brush" id="brush">
+          <button type="button" data-b="work" class="on"><i class="bw"></i>Рабочий</button>
+          <button type="button" data-b="off"><i class="bo"></i>Выходной</button>
+          <button type="button" data-b="half"><i class="bh"></i>Частично</button>
+          <button type="button" data-b="clear"><i class="bx"></i>Стереть</button>
+        </div>
+        <div class="monthnav"><button type="button" id="mprev" aria-label="Предыдущий месяц">‹</button><b id="mLabel"></b><button type="button" id="mnext" aria-label="Следующий месяц">›</button></div>
+        <div class="cal" id="cal"></div>
+        <div class="legend" id="mLegend"></div>
+        <div class="patterns">
+          Быстро заполнить:
+          <button type="button" data-pat="5/2">5/2</button>
+          <button type="button" data-pat="2/2">2/2</button>
+          <button type="button" data-pat="3/3">3/3</button>
+          <button type="button" data-pat="1/3">Сутки/трое</button>
+          <label>с <input type="date" id="patStart" aria-label="Первый рабочий день графика"></label>
+        </div>
+      </section>
+      <div class="side">
+        <section class="panel">
+          <h2>2. Что распределить</h2>
+          <p class="hint">Сколько раз за месяц делать каждую задачу из общего списка.</p>
+          <div id="dTasks"></div>
+          <form class="add" id="addDist">
+            <input id="distInput" placeholder="Новая задача для месяца" autocomplete="off">
+            <button type="submit">+</button>
+          </form>
+          <div class="caprow">
+            <div>Выходной: <span class="step"><button type="button" data-cap="full" data-d="-1" aria-label="Меньше">−</button><span id="capFull"></span><button type="button" data-cap="full" data-d="1" aria-label="Больше">+</button></span></div>
+            <div>Частично: <span class="step"><button type="button" data-cap="half" data-d="-1" aria-label="Меньше">−</button><span id="capHalf"></span><button type="button" data-cap="half" data-d="1" aria-label="Больше">+</button></span></div>
+          </div>
+          <p class="hint">Это максимум задач в день, с учётом уже запланированных.</p>
+          <button type="button" class="gen" id="genBtn">Предложить варианты</button>
+        </section>
+      </div>
+    </div>
+    <section class="panel" id="vPanel" hidden>
+      <h2>3. Варианты <span class="count" id="vCount"></span></h2>
+      <div class="seg" id="vSeg">
+        <button type="button" data-v="0" class="on">Равномерно</button>
+        <button type="button" data-v="1">Упор на выходные</button>
+        <button type="button" data-v="2">Поскорее</button>
+      </div>
+      <p class="vdesc" id="vDesc"></p>
+      <p class="warn" id="vWarn" hidden></p>
+      <div id="vList"></div>
+      <button type="button" class="gen" id="applyBtn">Добавить в план</button>
+      <p class="status" id="mStatus"></p>
+    </section>
   </div>
 
   <div class="tab" id="tabStats" hidden>
@@ -371,13 +473,16 @@ function render(){
   ups.forEach((day,i)=>{ $("#upList").children[i].querySelector(".r").textContent = byDate[day].map(t=>t.title).join(", "); });
   $("#datePick").value = sel;
   if(!$("#tabStats").hidden) renderStats();
+  if(!$("#tabMonth").hidden) renderMonth();
 
   document.querySelectorAll("form.add input, form.add button, .chk, .del, .pick:not([disabled])").forEach(el=>{ if(readOnly) el.disabled = true; });
 }
 
 const KEY = "planner-v1";
-function load(){ try{ const s = JSON.parse(localStorage.getItem(KEY)||"{}"); plan = s.plan||[]; pool = s.pool||[]; }catch(_){ plan=[]; pool=[]; } }
-function save(){ try{ localStorage.setItem(KEY, JSON.stringify({plan,pool})); status("Сохранено на этом устройстве."); }catch(_){ status("Браузер не даёт сохранять данные (например, в приватном режиме)."); } render(); }
+let sched = {};                              // {"YYYY-MM-DD": "work"|"off"|"half"}
+let dist = {full:3, half:1, counts:{}};      // tasks per day limits, pool id -> times per month
+function load(){ try{ const s = JSON.parse(localStorage.getItem(KEY)||"{}"); plan = s.plan||[]; pool = s.pool||[]; sched = s.sched||{}; dist = Object.assign({full:3, half:1, counts:{}}, s.dist||{}); }catch(_){ plan=[]; pool=[]; } }
+function save(){ try{ localStorage.setItem(KEY, JSON.stringify({plan,pool,sched,dist})); status("Сохранено на этом устройстве."); }catch(_){ status("Браузер не даёт сохранять данные (например, в приватном режиме)."); } render(); }
 const uid = () => Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 function status(t){ $("#status").textContent = t; }
 
@@ -391,12 +496,138 @@ $("#upList").onclick = e=>{ const b = e.target.closest("button[data-day]"); if(b
 
 // tabs
 function showTab(name){
-  $("#tabPlan").hidden = name!=="plan"; $("#tabStats").hidden = name!=="stats";
+  $("#tabPlan").hidden = name!=="plan"; $("#tabStats").hidden = name!=="stats"; $("#tabMonth").hidden = name!=="month";
   document.querySelectorAll(".tabs button").forEach(b=>b.classList.toggle("on", b.dataset.tab===name));
   try{ localStorage.setItem("delishki-tab", name); }catch(_){}
   render();
 }
 document.querySelector(".tabs").onclick = e=>{ const b = e.target.closest("button[data-tab]"); if(b) showTab(b.dataset.tab); };
+
+// ---------- month distribution ----------
+const MONTHS_NOM = ["Январь","Февраль","Март","Апрель","Май","Июнь","Июль","Август","Сентябрь","Октябрь","Ноябрь","Декабрь"];
+const DAYTYPE = {work:"Рабочий", off:"Выходной", half:"Частично"};
+let mMonth = todayIso().slice(0,8)+"01", brushType = "work", variants = null, vSel = 0, vOff = new Set();
+const monthDays = m => { const out = []; for(let d = m; d.slice(0,7)===m.slice(0,7); d = addDays(d,1)) out.push(d); return out; };
+const shiftMonth = (m,n) => { const d = parse(m); d.setMonth(d.getMonth()+n, 1); return iso(d); };
+const planned = d => plan.filter(t=>t.date===d).length;
+
+function renderMonth(){
+  const t0 = todayIso(), days = monthDays(mMonth), first = parse(mMonth);
+  $("#mLabel").textContent = MONTHS_NOM[first.getMonth()]+" "+first.getFullYear();
+  if(!$("#patStart").value || $("#patStart").value.slice(0,7)!==mMonth.slice(0,7)) $("#patStart").value = mMonth;
+  const lead = (first.getDay()+6)%7;
+  $("#cal").innerHTML = ["Пн","Вт","Ср","Чт","Пт","Сб","Вс"].map(w=>`<span class="wh">${w}</span>`).join("")
+    + "<span></span>".repeat(lead)
+    + days.map(d=>{ const n = planned(d), ty = sched[d]||"";
+        return `<button type="button" data-day="${d}" class="${ty} ${d<t0?"past":""} ${d===t0?"today":""}" aria-label="${parse(d).getDate()}: ${DAYTYPE[ty]||"не отмечен"}${n?", задач: "+n:""}">${parse(d).getDate()}${n?`<sup>${n}</sup>`:""}</button>`; }).join("");
+  const cnt = {work:0, off:0, half:0}; days.forEach(d=>{ if(sched[d]) cnt[sched[d]]++; });
+  $("#mLegend").textContent = `Рабочих: ${cnt.work} · Выходных: ${cnt.off} · Частично: ${cnt.half}`;
+
+  const ps = pool.slice().sort((a,b)=>(a.createdAt||0)-(b.createdAt||0));
+  $("#dTasks").innerHTML = ps.length ? ps.map(p=>{ const n = dist.counts[p.id]||0;
+    return `<div class="dtask ${n?"":"zero"}" data-id="${p.id}"><span class="t"></span><span class="step"><button type="button" data-d="-1" aria-label="Меньше">−</button><span>${n} ${plural(n,"раз","раза","раз")}</span><button type="button" data-d="1" aria-label="Больше">+</button></span></div>`; }).join("")
+    : `<p class="empty-note">Общий список пуст. Добавьте задачи ниже или на вкладке «План».</p>`;
+  ps.forEach((p,i)=>{ $("#dTasks").children[i].querySelector(".t").textContent = p.title; });
+  $("#capFull").textContent = dist.full+" "+plural(dist.full,"задача","задачи","задач");
+  $("#capHalf").textContent = dist.half+" "+plural(dist.half,"задача","задачи","задач");
+  renderVariants();
+}
+
+$("#brush").onclick = e=>{ const b = e.target.closest("button[data-b]"); if(!b) return; brushType = b.dataset.b;
+  document.querySelectorAll("#brush button").forEach(x=>x.classList.toggle("on", x===b)); };
+$("#cal").onclick = e=>{ const b = e.target.closest("button[data-day]"); if(!b || b.classList.contains("past")) return;
+  if(brushType==="clear") delete sched[b.dataset.day]; else sched[b.dataset.day] = brushType;
+  variants = null; save(); };
+$("#mprev").onclick = ()=>{ mMonth = shiftMonth(mMonth,-1); variants = null; render(); };
+$("#mnext").onclick = ()=>{ mMonth = shiftMonth(mMonth,1); variants = null; render(); };
+document.querySelector(".patterns").onclick = e=>{ const b = e.target.closest("button[data-pat]"); if(!b) return;
+  const [w,o] = b.dataset.pat.split("/").map(Number), start = $("#patStart").value || mMonth;
+  monthDays(mMonth).forEach(d=>{
+    if(b.dataset.pat==="5/2"){ const k = parse(d).getDay(); sched[d] = (k===0||k===6) ? "off" : "work"; return; }
+    const diff = Math.round((parse(d)-parse(start))/864e5); if(diff<0) return;
+    sched[d] = diff % (w+o) < w ? "work" : "off";
+  });
+  variants = null; save(); };
+$("#dTasks").onclick = e=>{ const b = e.target.closest("button[data-d]"); if(!b) return;
+  const id = b.closest(".dtask").dataset.id; dist.counts[id] = Math.max(0, Math.min(31, (dist.counts[id]||0) + +b.dataset.d));
+  variants = null; save(); };
+document.querySelector(".caprow").onclick = e=>{ const b = e.target.closest("button[data-cap]"); if(!b) return;
+  dist[b.dataset.cap] = Math.max(b.dataset.cap==="full"?1:0, Math.min(10, dist[b.dataset.cap] + +b.dataset.d)); variants = null; save(); };
+$("#addDist").onsubmit = e=>{ e.preventDefault(); const v = $("#distInput").value.trim(); if(!v) return; $("#distInput").value = "";
+  const id = uid(); pool.push({id, title:v, createdAt:Date.now()}); dist.counts[id] = 4; variants = null; save(); };
+
+// Builds one proposal. kind 0 = spread evenly, 1 = fill full days off first, 2 = as early as possible.
+function propose(kind){
+  const t0 = todayIso();
+  const free = monthDays(mMonth).filter(d=>d>=t0 && (sched[d]==="off"||sched[d]==="half"));
+  const cap = {}; free.forEach(d=>{ cap[d] = Math.max(0, (sched[d]==="off"?dist.full:dist.half) - planned(d)); });
+  const has = {};  // date -> Set of pool ids
+  const out = [];
+  const tasks = pool.filter(p=>(dist.counts[p.id]||0)>0).sort((a,b)=>dist.counts[b.id]-dist.counts[a.id]);
+  const put = (d,p)=>{ cap[d]--; (has[d] ||= new Set()).add(p.id); out.push({date:d, pid:p.id, title:p.title}); };
+  const ok = (d,p)=> cap[d]>0 && !(has[d]&&has[d].has(p.id));
+  let missed = 0;
+  if(kind===2){
+    const last = {}, need = {}; tasks.forEach(p=>need[p.id] = dist.counts[p.id]);
+    let left = true;
+    while(left){ left = false;
+      for(const p of tasks){ if(!need[p.id]) continue;
+        const d = free.find(x=>x > (last[p.id]||"") && ok(x,p));
+        if(d){ put(d,p); last[p.id] = d; need[p.id]--; left = true; } else { missed += need[p.id]; need[p.id] = 0; } } }
+  } else {
+    const lists = kind===1 ? [free.filter(d=>sched[d]==="off"), free] : [free];
+    tasks.forEach((p,ti)=>{
+      const n = dist.counts[p.id], shift = (ti*0.618)%1;
+      for(let i=0;i<n;i++){
+        let placed = false;
+        for(const L of lists){ if(!L.length) continue;
+          const target = Math.min(L.length-1, Math.floor((i+shift)*L.length/n));
+          for(let k=0;k<L.length*2 && !placed;k++){ const j = target + (k%2 ? -(k+1)/2 : k/2);
+            if(j>=0 && j<L.length && ok(L[j],p)){ put(L[j],p); placed = true; } }
+          if(placed) break; }
+        if(!placed) missed++;
+      }
+    });
+  }
+  out.sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:0);
+  return {items:out, missed, free:free.length};
+}
+const VDESC = ["Задачи разнесены по всем свободным дням месяца.",
+  "Сначала загружаются полные выходные, частичные дни только если не хватило места.",
+  "Всё как можно раньше, конец месяца остаётся свободным."];
+function renderVariants(){
+  $("#vPanel").hidden = !variants; if(!variants) return;
+  const v = variants[vSel];
+  document.querySelectorAll("#vSeg button").forEach(b=>b.classList.toggle("on", +b.dataset.v===vSel));
+  $("#vDesc").textContent = VDESC[vSel];
+  const total = v.items.length + v.missed;
+  const warn = !v.free ? "В этом месяце нет отмеченных выходных или частичных дней. Отметьте их в календаре."
+    : !total ? "Укажите, сколько раз в месяц делать задачи."
+    : v.missed ? `Не поместилось: ${v.missed} ${plural(v.missed,"задача","задачи","задач")}. ` + (pool.some(p=>(dist.counts[p.id]||0)>v.free) ? `Свободных дней ${v.free}, а одну задачу дважды в день я не ставлю. ` : "") + "Увеличьте лимит в день или отметьте больше выходных." : "";
+  $("#vWarn").hidden = !warn; $("#vWarn").textContent = warn;
+  const by = {}; v.items.forEach((x,i)=>(by[x.date] ||= []).push(i));
+  $("#vList").innerHTML = Object.keys(by).map(d=>{ const dd = parse(d);
+    return `<div class="vday"><h3>${WDS[dd.getDay()]}, ${dd.getDate()} ${MONTHS[dd.getMonth()]} <span class="badge ${sched[d]==="half"?"half":""}">${DAYTYPE[sched[d]]}</span></h3>`
+      + by[d].map(i=>`<label class="vrow ${vOff.has(vSel+":"+i)?"offc":""}"><input type="checkbox" data-i="${i}" ${vOff.has(vSel+":"+i)?"":"checked"}><span></span></label>`).join("") + `</div>`; }).join("");
+  $("#vList").querySelectorAll(".vrow span").forEach(sp=>{ sp.textContent = v.items[+sp.previousElementSibling.dataset.i].title; });
+  const chosen = v.items.filter((_,i)=>!vOff.has(vSel+":"+i)).length;
+  $("#vCount").textContent = `${chosen} из ${total}`;
+  $("#applyBtn").textContent = chosen ? `Добавить в план (${chosen})` : "Ничего не выбрано";
+  $("#applyBtn").disabled = !chosen;
+}
+$("#genBtn").onclick = ()=>{ variants = [0,1,2].map(propose); vSel = 0; vOff = new Set(); $("#mStatus").textContent = ""; renderVariants();
+  $("#vPanel").scrollIntoView({behavior:"smooth", block:"start"}); };
+$("#vSeg").onclick = e=>{ const b = e.target.closest("button[data-v]"); if(b){ vSel = +b.dataset.v; renderVariants(); } };
+$("#vList").onchange = e=>{ if(e.target.type!=="checkbox") return; const k = vSel+":"+e.target.dataset.i;
+  e.target.checked ? vOff.delete(k) : vOff.add(k); renderVariants(); };
+$("#applyBtn").onclick = ()=>{
+  const v = variants[vSel], pick = v.items.filter((_,i)=>!vOff.has(vSel+":"+i));
+  pick.forEach((x,k)=>plan.push({id:uid(), title:x.title, date:x.date, done:false, progress:0, createdAt:Date.now()+k, poolId:x.pid}));
+  variants = null; save();
+  $("#mStatus").textContent = `Добавлено ${pick.length} ${plural(pick.length,"задача","задачи","задач")} в план.`;
+  $("#vPanel").hidden = false; $("#vList").innerHTML = ""; $("#vWarn").hidden = true; $("#vDesc").textContent = "Готово. Задачи появились на вкладке «План» в выбранных днях.";
+  $("#applyBtn").disabled = true; $("#applyBtn").textContent = "Добавлено";
+};
 
 // stats
 let range = "30";
@@ -508,19 +739,19 @@ $("#poolList").onclick = e=>{
 
 // backup
 $("#exportBtn").onclick = ()=>{
-  const blob = new Blob([JSON.stringify({plan,pool},null,1)],{type:"application/json"});
+  const blob = new Blob([JSON.stringify({plan,pool,sched,dist},null,1)],{type:"application/json"});
   const a = document.createElement("a"); a.href = URL.createObjectURL(blob);
   a.download = "planner-backup-"+todayIso()+".json"; a.click();
 };
 $("#importFile").onchange = async e=>{
   const f = e.target.files[0]; if(!f) return;
   try{ const s = JSON.parse(await f.text()); if(!Array.isArray(s.plan)||!Array.isArray(s.pool)) throw 0;
-    plan = s.plan; pool = s.pool; save(); status("Копия восстановлена."); }
+    plan = s.plan; pool = s.pool; sched = s.sched||{}; dist = Object.assign({full:3, half:1, counts:{}}, s.dist||{}); save(); status("Копия восстановлена."); }
   catch(_){ status("Это не файл копии планера."); }
   e.target.value = "";
 };
 // auto-update: when the page is opened, fetch a fresh copy and reload if a newer version was published
-const APP_VERSION = "2026-10-15c";
+const APP_VERSION = "2026-10-15d";
 async function checkUpdate(){
   try{
     const r = await fetch(location.pathname+"?check="+Date.now(), {cache:"no-store"});
@@ -588,7 +819,7 @@ let savedTheme = "auto"; try{ savedTheme = localStorage.getItem("delishki-theme"
 applyTheme(THEME_COLORS[savedTheme] || savedTheme==="auto" ? savedTheme : "auto");
 
 load();
-let startTab = "plan"; try{ startTab = localStorage.getItem("delishki-tab")==="stats" ? "stats" : "plan"; }catch(_){}
+let startTab = "plan"; try{ startTab = ["stats","month"].includes(localStorage.getItem("delishki-tab")) ? localStorage.getItem("delishki-tab") : "plan"; }catch(_){}
 showTab(startTab); status(plan.length||pool.length ? "Сохранено на этом устройстве." : "Задачи хранятся только на этом устройстве.");
 </script>
 </body>
