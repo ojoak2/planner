@@ -479,6 +479,18 @@ $("#importFile").onchange = async e=>{
   catch(_){ status("Это не файл копии планера."); }
   e.target.value = "";
 };
+// auto-update: when the page is opened, fetch a fresh copy and reload if a newer version was published
+const APP_VERSION = "2026-10-15b";
+async function checkUpdate(){
+  try{
+    const r = await fetch(location.pathname+"?check="+Date.now(), {cache:"no-store"});
+    const m = (await r.text()).match(/APP_VERSION = "([^"]+)"/);
+    if(m && m[1] !== APP_VERSION && !new URLSearchParams(location.search).has("v"+m[1])) location.replace(location.pathname+"?v"+m[1]);
+  }catch(_){}
+}
+checkUpdate();
+document.addEventListener("visibilitychange", ()=>{ if(document.visibilityState==="visible") checkUpdate(); });
+
 load();
 let startTab = "plan"; try{ startTab = localStorage.getItem("delishki-tab")==="stats" ? "stats" : "plan"; }catch(_){}
 showTab(startTab); status(plan.length||pool.length ? "Сохранено на этом устройстве." : "Задачи хранятся только на этом устройстве.");
