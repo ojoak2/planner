@@ -7,10 +7,23 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Delishki">
 <meta name="theme-color" content="#eef1f6">
+<meta name="color-scheme" content="light dark">
 <link rel="apple-touch-icon" href="delishki-icon-180.png?v=3">
 <link rel="icon" type="image/png" href="delishki-icon-512.png?v=3">
 <title>Delishki</title>
-<script>try{var t=localStorage.getItem("delishki-theme");if(t&&t!=="auto")document.documentElement.setAttribute("data-theme",t);}catch(e){}</script>
+<script>
+/* Paint the theme background before anything else loads, so launch never flashes another colour */
+(function(){
+  var BG = {light:"#eef1f6", dark:"#10141c", xmas:"#0a1626", halloween:"#150f1f"}, t = "auto";
+  try{ t = localStorage.getItem("delishki-theme") || "auto"; }catch(e){}
+  if(!BG[t]) t = "auto"; else document.documentElement.setAttribute("data-theme", t);
+  var c = BG[t==="auto" ? (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light") : t];
+  document.documentElement.style.background = c;
+  document.querySelector('meta[name="theme-color"]').content = c;
+})();
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700&family=Golos+Text:wght@400;500;600&family=JetBrains+Mono:wght@500&family=Creepster&family=Mountains+of+Christmas:wght@700&display=swap">
 <style>
 /* Layout: day header with big percent + week strip, then two columns — day plan | shared task pool */
@@ -777,7 +790,7 @@ $("#importFile").onchange = async e=>{
   e.target.value = "";
 };
 // auto-update: when the page is opened, fetch a fresh copy and reload if a newer version was published
-const APP_VERSION = "2026-10-15h";
+const APP_VERSION = "2026-10-15i";
 // Updates install quietly: if a newer version is published, refresh the browser's cached copy
 // so the next launch opens it. Nothing reloads or blinks while the app is open.
 async function checkUpdate(){
@@ -798,7 +811,8 @@ function applyTheme(t){
   if(t==="auto") document.documentElement.removeAttribute("data-theme");
   else document.documentElement.setAttribute("data-theme", t);
   const sysDark = matchMedia("(prefers-color-scheme: dark)").matches;
-  document.querySelector('meta[name="theme-color"]').content = THEME_COLORS[t==="auto" ? (sysDark?"dark":"light") : t];
+  const bgc = THEME_COLORS[t==="auto" ? (sysDark?"dark":"light") : t];
+  document.querySelector('meta[name="theme-color"]').content = bgc; document.documentElement.style.background = bgc;
   document.querySelectorAll("#themeMenu button").forEach(b=>b.classList.toggle("on", b.dataset.th===t));
   try{ localStorage.setItem("delishki-theme", t); }catch(_){}
   if(t==="xmas") drawGarland();
