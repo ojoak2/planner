@@ -6,7 +6,6 @@
 <meta name="theme-color" content="#F2B233">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>PTIZASOVA</title>
-<meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Russo+One&family=Rubik:wght@400;500;600;700&family=IBM+Plex+Sans+Condensed:wght@500;600&family=JetBrains+Mono:wght@500&display=swap">
@@ -272,100 +271,16 @@ function streakNow(){ const y = new Date(Date.now()-864e5).toISOString().slice(0
 
 let route = { name:"home" };
 
-/* ---------- Claude ---------- */
-/* Two ways to reach Claude:
-   1) inside claude.ai (artifact) — the viewer's Claude account via window.claude;
-   2) anywhere else (GitHub Pages, phone home screen) — the user's own Anthropic API key, pay-as-you-go. */
-let CS = "pending", claudeSample = null, canImages = false;
-const claudeReady = (async () => {
-  try {
-    if (!window.claude || !window.claude.use) return;
-    const s = await window.claude.use("sample");
-    if (!s) return;
-    const lim = await s.limits().catch(() => null);
-    canImages = !!(lim && lim.images);
-    claudeSample = s;
-  } catch(e){}
-  finally { CS = "done"; setTimeout(() => { if (route.name === "home") render(); }, 0); }
-})();
-const KEY_SLOT = "ptizasova.apikey";
-function apiKey(){ try { return localStorage.getItem(KEY_SLOT) || ""; } catch(e){ return ""; } }
-function setApiKey(k){ try { if (k) localStorage.setItem(KEY_SLOT, k); else localStorage.removeItem(KEY_SLOT); } catch(e){} }
-function aiMode(){ if (claudeSample) return "claude"; if (apiKey()) return "api"; return CS === "pending" ? "pending" : "off"; }
-async function engine(){
-  await claudeReady;
-  if (claudeSample) return claudeSample;
-  const k = apiKey();
-  return k ? { json: (p, o) => apiJson(k, p, o || {}) } : null;
-}
-function parseLoose(t){
-  t = String(t || "").trim();
-  try { return JSON.parse(t); } catch(e){}
-  const f = t.match(/```(?:json)?\s*([\s\S]*?)```/); if (f) { try { return JSON.parse(f[1]); } catch(e){} }
-  const a = t.search(/[\[{]/), b = Math.max(t.lastIndexOf("}"), t.lastIndexOf("]"));
-  if (a >= 0 && b > a) { try { return JSON.parse(t.slice(a, b + 1)); } catch(e){} }
-  throw { code:"invalid_json", text:t };
-}
-function blobToB64(b){ return new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(",")[1]); r.onerror = rej; r.readAsDataURL(b); }); }
-async function apiJson(key, prompt, o){
-  const quick = o.modelTier === "quick";
-  const content = [];
-  for (const b of (o.images ? [].concat(o.images) : [])) content.push({ type:"image", source:{ type:"base64", media_type:b.type || "image/jpeg", data: await blobToB64(b) } });
-  content.push({ type:"text", text: prompt + "\n\nОтвет будет разобран программой: верни только JSON, без текста до и после." });
-  const body = quick
-    ? { model:"claude-haiku-5-5", max_tokens:1024, stream:true, output_config:{ effort:"low" }, messages:[{ role:"user", content }] }
-    : { model:"claude-opus-5-5", max_tokens:32000, stream:true, output_config:{ effort:"low" }, fallbacks:"default", messages:[{ role:"user", content }] };
-  const headers = { "content-type":"application/json", "x-api-key":key, "anthropic-version":"2023-06-01", "anthropic-dangerous-direct-browser-access":"true" };
-  if (!quick) headers["anthropic-beta"] = "server-side-fallback-2026-07-01";
-  let res;
-  try { res = await fetch("https://api.anthropic.com/v1/messages", { method:"POST", headers, body:JSON.stringify(body), signal:o.signal }); }
-  catch(e){ throw { code: e && e.name === "AbortError" ? "cancelled" : "network" }; }
-  if (!res.ok) {
-    let msg = ""; try { msg = (await res.json()).error.message || ""; } catch(e){}
-    const code = res.status === 401 || res.status === 403 ? "bad_key"
-      : res.status === 429 ? "rate_limited"
-      : res.status === 400 && /credit|balance|billing/i.test(msg) ? "no_credit"
-      : res.status === 529 || res.status >= 500 ? "overloaded" : "upstream_error";
-    throw { code, message:msg };
-  }
-  const reader = res.body.getReader(), dec = new TextDecoder();
-  let buf = "", text = "", stop = "";
-  try {
-    for (;;) {
-      const { done, value } = await reader.read(); if (done) break;
-      buf += dec.decode(value, { stream:true });
-      let i;
-      while ((i = buf.indexOf("\n\n")) >= 0) {
-        const ev = buf.slice(0, i); buf = buf.slice(i + 2);
-        const line = ev.split("\n").find(l => l.startsWith("data:")); if (!line) continue;
-        let d; try { d = JSON.parse(line.slice(5)); } catch(e){ continue; }
-        if (d.type === "content_block_delta" && d.delta && d.delta.type === "text_delta") {
-          text += d.delta.text; if (o.onText) { try { o.onText({ text, delta:d.delta.text }); } catch(e){} }
-        } else if (d.type === "message_delta" && d.delta && d.delta.stop_reason) stop = d.delta.stop_reason;
-        else if (d.type === "error") throw { code: d.error && d.error.type === "overloaded_error" ? "overloaded" : "upstream_error", message: d.error && d.error.message };
-      }
-    }
-  } catch(e){ if (e && e.name === "AbortError") throw { code:"cancelled" }; throw e && e.code ? e : { code:"network" }; }
-  if (stop === "refusal") throw { code:"refused" };
-  if (!text.trim()) throw { code:"empty_completion" };
-  return parseLoose(text);
-}
+/* ---------- errors ---------- */
 const ERR = {
-  not_granted:"Ты не разрешил странице обращаться к Claude, поэтому новые уроки не создаются. Демо-уроки работают.",
-  sampling_disabled:"Claude недоступен для этого аккаунта. Демо-уроки работают.",
-  rate_limited:"Слишком много запросов подряд или исчерпан лимит. Подожди немного и попробуй снова.",
-  session_expired:"Сессия истекла. Войди в Claude снова и обнови страницу.",
-  refused:"Claude отказался делать урок по этому запросу. Попробуй другое название.",
-  invalid_json:"Ответ пришёл в неправильном формате. Нажми «Попробовать снова».",
-  image_rejected:"Этот файл не подходит. Загрузи JPEG, PNG или WebP поменьше.",
-  images_unavailable:"В этом просмотре нельзя отправлять картинки.",
-  empty_completion:"Claude ничего не ответил. Попробуй снова.",
-  bad_key:"Ключ API не подошёл. Проверь его в настройках (шестерёнка вверху).",
-  no_credit:"На балансе Anthropic закончились деньги. Пополни его на console.anthropic.com.",
-  overloaded:"Серверы Claude сейчас перегружены. Попробуй через минуту.",
-  network:"Нет связи с сервером Claude. Проверь интернет и попробуй снова."
+  not_found:"Не нашёл такой фильм или сериал в Википедии. Проверь название или напиши его по-английски.",
+  no_quotes:"На Wikiquote нет реплик из этого фильма или сериала. Попробуй другое название или «Слова».",
+  network:"Нет интернета, или Википедия не отвечает. Проверь связь и попробуй снова.",
+  translate_failed:"Не получилось перевести реплики: мини-ИИ не загрузился, и запасной переводчик не ответил. Проверь интернет и попробуй снова.",
+  no_text:"На кадре не нашлось английского текста. Загрузи кадр с английскими субтитрами.",
+  ocr_failed:"Не получилось прочитать кадр. Попробуй другое изображение."
 };
-const errText = e => ERR[e && e.code] || "Связь с Claude прервалась. Попробуй снова.";
+const errText = e => (e && e.code === "no_quotes" && e.title ? `На Wikiquote нет реплик из «${e.title}». Попробуй другое название или «Слова».` : ERR[e && e.code]) || "Что-то пошло не так. Попробуй ещё раз.";
 
 /* ---------- helpers ---------- */
 const $ = (s, r=document) => r.querySelector(s);
@@ -376,7 +291,7 @@ function lev(a,b){ const m=a.length,n=b.length; if(!m) return n; if(!n) return m
 const sim = (a,b) => { a=norm(a); b=norm(b); const L=Math.max(a.length,b.length)||1; return 1 - lev(a,b)/L; };
 const hash = s => { let h=0; for (const ch of String(s)) h = (h*31 + ch.codePointAt(0))|0; return Math.abs(h); };
 const plural = (n, one, few, many) => { const a=n%10, b=n%100; return (a===1&&b!==11)?one:(a>=2&&a<=4&&(b<12||b>14))?few:many; };
-const isWordsQuery = q => /^(слова|words|лексика)\b/i.test(q.trim());
+const isWordsQuery = q => /^(слова|words|лексика)(?!\p{L})/iu.test(q.trim());
 
 const MOODS = {
   night:"radial-gradient(ellipse at 70% 20%,#3d5a9e 0%,transparent 55%),linear-gradient(160deg,#141a35,#05060d)",
@@ -392,7 +307,7 @@ const MOODS = {
 const MOOD_KEYS = Object.keys(MOODS);
 const posterBg = key => MOODS[MOOD_KEYS[hash(key) % MOOD_KEYS.length]];
 
-/* ---------- demo lessons (used when Claude is unavailable) ---------- */
+/* ---------- demo lesson (used when there is no internet) ---------- */
 const DEMO = {
   boys: {
     known:true, title_ru:"Пацаны", title_en:"The Boys", kind:"сериал",
@@ -446,104 +361,501 @@ const DEMO = {
   }
 };
 function demoFor(c){
-  if (c.mode === "words" && (!c.theme || c.theme === "")) return DEMO.words;
   if (c.mode === "movie" && /пацан|the boys|^boys$/i.test(c.query)) return DEMO.boys;
   return null;
 }
 
-/* ---------- prompts ---------- */
-const CEFR = {A1:"начинающий (A1)",A2:"элементарный (A2)",B1:"средний (B1)",B2:"выше среднего (B2)",C1:"продвинутый (C1)"};
+/* ---------- difficulty ---------- */
+const CEFRS = ["A1","A2","B1","B2","C1"];
 function difficulty(n){
-  const base = ["A1","A2","B1","B2","C1"].indexOf(S.cefr);
+  const base = CEFRS.indexOf(S.cefr);
   const shift = n <= 2 ? -1 : n <= 5 ? 0 : 1;
-  return ["A1","A2","B1","B2","C1"][Math.max(0,Math.min(4,base+shift))];
+  return CEFRS[Math.max(0, Math.min(4, base + shift))];
 }
-const SCENE_FMT = `"scene":{"ep":"S1E3 (для фильма пусто)","time":"00:12:40 примерно","who":"имя персонажа латиницей как в оригинале","where":"место коротко по-русски","mood":"одно из night|day|fire|blood|neon|office|nature|cold|sky","ctx_ru":"что происходит в сцене, 1 предложение","line_en":"реплика на английском"}`;
-function moviePrompt(c, n){
-  const lvl = difficulty(n);
-  return `Ты автор уроков английского в приложении PTIZASOVA: как Duolingo, но по моментам из фильмов и сериалов. Ученик русскоязычный.
-Запрос ученика: «${c.query}».
-Это урок ${n}. Уровень сложности реплик: ${CEFR[lvl]}. Чем выше номер урока, тем дальше по сюжету бери сцены (урок 1 — начало, дальше — следующие сезоны/части).
+const MAXW = { A1:6, A2:9, B1:13, B2:17, C1:24 };
 
-1. Пойми, какое это произведение (фильм, сериал, мультфильм, аниме). Запрос может быть по-русски, с опечатками, сокращённо. Если ты не знаешь такого произведения, ответь только {"known":false,"reason_ru":"коротко почему"}.
-2. Вспомни 10 разных конкретных сцен. Для каждой дай реплику персонажа на английском, как она звучит в оригинале. Если не помнишь дословно, дай максимально близкий короткий вариант. Мат замени мягким словом. Длина реплики подходит уровню ${lvl}.
-${c.seen.length ? "Не повторяй эти реплики, они уже были: " + c.seen.slice(-60).map(s => JSON.stringify(s)).join("; ") : ""}
-3. По каждой сцене сделай одно задание. Ровно 10 заданий: 4 типа "choice", 3 типа "build", 2 типа "type", 1 типа "pairs". Перемешай, первое — "choice", последнее — "pairs".
+/* ---------- built-in dictionary for «Слова» (en | ru | example) ---------- */
+const THEMES = [
+  { id:"everyday", name:"Слова на каждый день", alias:["","базовые","повседневные","каждый день","общие","everyday"], words:`
+borrow|одолжить, взять на время|Can I borrow your pen?
+notice|заметить|Did you notice anything strange?
+afford|позволить себе|I can't afford a new car.
+reliable|надёжный|She is a reliable friend.
+bother|беспокоить|Sorry to bother you.
+mess|беспорядок|Your room is a mess.
+suddenly|внезапно|Suddenly the lights went out.
+probably|вероятно|It will probably rain.
+enough|достаточно|I have enough money.
+anyway|в любом случае|Anyway, let's go home.
+remind|напоминать|Remind me to call him.
+expect|ожидать|I didn't expect you here.
+pretend|притворяться|Stop pretending you don't know.
+deal|сделка; договорились|It's a deal.
+miss|скучать; упустить|I miss you so much.` },
+  { id:"travel", name:"Путешествия", alias:["путешествия","путешествие","поездки","отпуск","travel"], words:`
+luggage|багаж|My luggage is too heavy.
+ticket|билет|I bought a ticket to London.
+flight|рейс, перелёт|Our flight is delayed.
+delay|задержка|Sorry for the delay.
+departure|отправление|Departure is at six.
+arrival|прибытие|Arrival time is nine.
+passport|паспорт|Show me your passport, please.
+booking|бронирование|I have a booking for two nights.
+abroad|за границей|She lives abroad.
+sightseeing|осмотр достопримечательностей|We went sightseeing in Rome.
+journey|поездка, путешествие|Have a nice journey!
+border|граница|We crossed the border at night.
+souvenir|сувенир|I bought a souvenir for my mom.
+map|карта|Let's check the map.
+trip|поездка|How was your trip?` },
+  { id:"food", name:"Еда", alias:["еда","кухня","ресторан","food"], words:`
+hungry|голодный|I'm so hungry.
+delicious|вкусный|This soup is delicious.
+recipe|рецепт|Can you share the recipe?
+bill|счёт в ресторане|Can we have the bill, please?
+spicy|острый|This sauce is too spicy.
+meal|приём пищи, еда|Breakfast is my favourite meal.
+dessert|десерт|What's for dessert?
+fried|жареный|I don't eat fried food.
+boil|варить, кипятить|Boil the water first.
+taste|вкус; пробовать|Taste this cake.
+order|заказывать|Are you ready to order?
+tip|чаевые|We left a big tip.
+snack|перекус|Let's grab a snack.
+raw|сырой|The fish is raw.
+leftovers|остатки еды|We ate the leftovers for lunch.` },
+  { id:"work", name:"Работа", alias:["работа","офис","карьера","work"], words:`
+salary|зарплата|My salary is too low.
+boss|начальник|My boss is angry.
+deadline|крайний срок|The deadline is tomorrow.
+meeting|встреча, совещание|The meeting starts at ten.
+hire|нанимать|They want to hire you.
+fired|уволенный|He was fired last week.
+quit|уволиться, бросить|I quit my job.
+colleague|коллега|My colleague helped me.
+task|задача|This task is easy.
+experience|опыт|Do you have any experience?
+promotion|повышение|She got a promotion.
+schedule|расписание, график|Check your schedule.
+skill|навык|This skill is useful.
+earn|зарабатывать|How much do you earn?
+retire|выходить на пенсию|My dad wants to retire.` },
+  { id:"emotions", name:"Эмоции", alias:["эмоции","чувства","настроение","emotions"], words:`
+angry|злой|Why are you so angry?
+scared|напуганный|I'm scared of the dark.
+proud|гордый|I'm proud of you.
+jealous|ревнивый, завистливый|He is jealous of his brother.
+upset|расстроенный|She looks upset.
+ashamed|пристыженный|You should be ashamed.
+relieved|испытывающий облегчение|I'm relieved it's over.
+lonely|одинокий|He feels lonely.
+excited|в восторге|I'm so excited about the trip!
+bored|скучающий|I'm bored at home.
+confused|сбитый с толку|I'm confused.
+grateful|благодарный|I'm grateful for your help.
+worried|обеспокоенный|Don't be worried.
+embarrassed|смущённый|I was so embarrassed.
+furious|в ярости|The boss was furious.` },
+  { id:"home", name:"Дом", alias:["дом","квартира","быт","home"], words:`
+rent|аренда|The rent is too high.
+neighbour|сосед|Our neighbour is very loud.
+ceiling|потолок|The ceiling is white.
+floor|пол; этаж|I live on the third floor.
+drawer|ящик стола|The keys are in the drawer.
+shelf|полка|Put the book on the shelf.
+laundry|стирка|I do the laundry on Sundays.
+sink|раковина|The sink is full of dishes.
+stairs|лестница|Take the stairs.
+key|ключ|I lost my key.
+cozy|уютный|Your flat is so cozy.
+move|переезжать|We move next week.
+repair|ремонтировать|Can you repair the door?
+furniture|мебель|We need new furniture.
+blanket|одеяло, плед|Give me a blanket.` },
+  { id:"city", name:"Город", alias:["город","улица","транспорт","city"], words:`
+crossroads|перекрёсток|Turn left at the crossroads.
+traffic|движение, пробки|The traffic is terrible today.
+downtown|центр города|Let's meet downtown.
+sidewalk|тротуар|Walk on the sidewalk.
+pharmacy|аптека|Is there a pharmacy near here?
+corner|угол|The shop is on the corner.
+crowded|людный|The bus is crowded.
+subway|метро|Take the subway.
+parking|парковка|There's no parking here.
+bridge|мост|Cross the bridge.
+neighbourhood|район|This is a quiet neighbourhood.
+square|площадь|We met in the main square.
+lost|потерявшийся|I'm lost.
+straight|прямо|Go straight ahead.
+nearby|поблизости|Is there a café nearby?` },
+  { id:"health", name:"Здоровье", alias:["здоровье","врач","медицина","больница","health"], words:`
+headache|головная боль|I have a headache.
+cough|кашель|Your cough sounds bad.
+fever|температура, жар|He has a fever.
+pill|таблетка|Take this pill.
+injury|травма|It's a serious injury.
+hurts|болит|My leg hurts.
+recover|выздоравливать|She will recover soon.
+sick|больной|I feel sick.
+appointment|запись к врачу|I have a doctor's appointment.
+tired|уставший|I'm tired today.
+breathe|дышать|Breathe slowly.
+bleed|кровоточить|Does it bleed?
+weak|слабый|I feel weak.
+healthy|здоровый|Eat healthy food.
+sleep|сон; спать|You need more sleep.` },
+  { id:"weather", name:"Погода и время", alias:["погода","время","weather"], words:`
+sunny|солнечный|It's sunny today.
+cloudy|облачный|The sky is cloudy.
+storm|гроза, шторм|A storm is coming.
+freezing|очень холодно|It's freezing outside.
+forecast|прогноз|Check the weather forecast.
+umbrella|зонт|Take an umbrella.
+wet|мокрый|My shoes are wet.
+humid|влажный|It's hot and humid.
+soon|скоро|See you soon.
+late|поздно|Don't be late.
+early|рано|I get up early.
+lately|в последнее время|I've been busy lately.
+weekend|выходные|What are you doing this weekend?
+season|время года; сезон|Summer is my favourite season.
+midnight|полночь|Come home before midnight.` },
+  { id:"slang", name:"Сленг из сериалов", alias:["сленг","сериалы","кино","фильмы","slang"], words:`
+dude|чувак|Dude, that was awesome!
+awesome|потрясающий|That was awesome!
+screw up|облажаться|Don't screw up this time.
+freak out|психовать|Don't freak out.
+hang out|тусоваться|Let's hang out tonight.
+gonna|собираюсь (going to)|I'm gonna call him.
+wanna|хочу (want to)|Do you wanna go?
+no way|ни за что; не может быть|No way! Really?
+chill|расслабься|Chill, it's fine.
+busted|попался|You're busted!
+bro|братан|Thanks, bro.
+deal with it|смирись|It's not fair. Deal with it.
+whatever|как скажешь, неважно|Whatever, I don't care.
+mate|приятель|Cheers, mate!
+spoiler|спойлер|No spoilers, please!` },
+  { id:"love", name:"Отношения", alias:["отношения","любовь","свидания","дружба","love"], words:`
+date|свидание|We went on a date.
+crush|влюблённость, симпатия|I have a crush on her.
+break up|расстаться|We should break up.
+trust|доверять|I trust you.
+lie|лгать; ложь|Don't lie to me.
+apologize|извиняться|You should apologize.
+forgive|прощать|Please forgive me.
+argue|спорить, ругаться|They argue all the time.
+marry|жениться, выйти замуж|Will you marry me?
+friendship|дружба|Our friendship is important.
+betray|предать|He will never betray us.
+support|поддерживать|I support you.
+promise|обещать; обещание|I promise.
+hug|обнимать; объятие|Give me a hug.
+secret|секрет|Can you keep a secret?` }
+].map(t => ({ ...t, list: t.words.trim().split("\n").map(l => { const [en, ru, ex] = l.split("|"); return { en, ru, ex }; }) }));
+const DICT = {};
+for (const t of THEMES) for (const w of t.list) DICT[w.en] = w.ru;
+const findTheme = theme => { const n = norm(theme); return THEMES.find(t => t.alias.some(a => a === n || (a && n.startsWith(a)))); };
 
-Ответь только JSON без пояснений:
-{"known":true,"title_ru":"Пацаны","title_en":"The Boys","kind":"сериал","tasks":[...]}
-
-У каждого задания есть ${SCENE_FMT}, "explain_ru":"короткий разбор: идиома, грамматика или сленг", "words":[["en","ru"]] — 1-3 полезных слова или выражения из реплики.
-Типы:
-- {"type":"choice","options":["4 варианта перевода реплики на русский"],"answer":индекс_верного} — неверные варианты правдоподобные, но с ошибкой смысла.
-- {"type":"build","answer_ru":"естественный русский перевод реплики, до 9 слов, без кавычек","distractors":["4 лишних русских слова"]}
-- {"type":"type","accepted":["3-5 допустимых русских переводов"]}
-- {"type":"pairs","pairs":[["en","ru"] — ровно 5 пар слов из сцен этого урока]} — для него scene описывает одну сцену, а line_en — короткая фраза из неё.`;
-}
-function wordsPrompt(c, n){
-  const lvl = difficulty(n);
-  const mine = c.theme === "мой словарь";
-  const vocab = S.vocab.slice(-50).map(v => v[0] + " — " + v[1]).join("; ");
-  return `Ты автор уроков английского в приложении PTIZASOVA (как Duolingo). Ученик русскоязычный.
-Сделай урок ${n} на изучение новых английских слов. Уровень: ${CEFR[lvl]}.
-${mine ? "Это повторение. Используй только слова из словаря ученика: " + vocab : c.theme ? "Тема слов: «" + c.theme + "». Если это фильм или сериал, бери слова, которые там часто звучат." : "Тема: полезные слова на каждый день, в каждом уроке новая подборка."}
-${!mine && c.seen.length ? "Не повторяй эти слова, они уже были: " + c.seen.slice(-80).join(", ") : ""}
-Ровно 10 заданий: 3 "choice" английское слово → русское значение, 2 "choice" русское → английское, 2 "choice" с пропуском в английском предложении, 2 "type" (русское → написать по-английски), 1 "pairs" последним.
-
-Ответь только JSON без пояснений:
-{"known":true,"title_ru":"короткое название подборки по-русски","title_en":"Everyday words","kind":"слова","tasks":[...]}
-Форматы:
-- {"type":"choice","question":"слово или предложение с ___ на месте пропуска","hint":"пример употребления или перевод предложения по-русски","options":["4 варианта"],"answer":индекс}
-- {"type":"type","question":"русское слово","hint":"Напиши по-английски","accepted":["1-3 верных английских варианта"]}
-- {"type":"pairs","question":"","pairs":[["en","ru"] — 5 пар из слов урока]}
-У каждого задания: "explain_ru":"короткий пример или подсказка, как запомнить", "words":[["en","ru"]] — изучаемое слово.`;
-}
-function framePrompt(){
-  return `Ты автор уроков английского в приложении PTIZASOVA. Ученик русскоязычный, уровень ${CEFR[S.cefr]}.
-На картинке кадр из фильма, сериала или мультфильма. Узнай произведение и сцену, если можешь. Если на кадре есть субтитры, используй их. Если нет, восстанови реплику, которая звучит в этой сцене, или придумай естественную реплику персонажа в этот момент.
-Сделай 10 заданий по этому кадру: реплики персонажей, описание того, что видно на кадре, предметы и действия. Ровно 4 "choice", 3 "build", 2 "type", 1 "pairs" (последним).
-
-Ответь только JSON без пояснений:
-{"known":true,"title_ru":"название произведения или «Кадр»","title_en":"оригинальное название или Frame","kind":"кадр","tasks":[...]}
-У каждого задания ${SCENE_FMT} (line_en — английская фраза по кадру), "explain_ru":"короткий разбор", "words":[["en","ru"]].
-Типы:
-- {"type":"choice","options":["4 варианта перевода line_en на русский"],"answer":индекс}
-- {"type":"build","answer_ru":"русский перевод line_en, до 9 слов","distractors":["4 лишних русских слова"]}
-- {"type":"type","accepted":["3-5 допустимых русских переводов line_en"]}
-- {"type":"pairs","pairs":[["en","ru"] — 5 пар слов про этот кадр]}`;
-}
-
-function cleanTasks(raw, mode){
+const STOP = new Set(("a an the and or but if so to of in on at by for with from up out off over into onto about as is am are was were be been being " +
+  "i me my mine you your yours he him his she her hers it its we us our they them their this that these those there here what when where which who whom why how " +
+  "do does did done doing have has had having will would shall should can could may might must not no yes yeah okay ok oh hey well just like know think want " +
+  "going gonna gotta wanna get got go goes went come came say said tell told look see make made take let lets thing things something nothing anything everything " +
+  "someone anyone everyone people one two all any some more most much many very really right good great now then than too also still even ever never only " +
+  "again back down because before after while through time way need mean sure maybe guess dont cant wont im youre thats its ive youve were theyre hes shes whats " +
+  "lets ill youll didnt doesnt isnt arent wasnt couldnt wouldnt shouldnt mr mrs sir yes uh um huh").split(" "));
+function contentWords(line){
   const out = [];
-  for (const t of (Array.isArray(raw) ? raw : [])) {
-    if (!t || typeof t !== "object") continue;
-    const x = { type:String(t.type||""), explain_ru:String(t.explain_ru||""), words:(Array.isArray(t.words)?t.words:[]).filter(w=>Array.isArray(w)&&w.length>=2).map(w=>[String(w[0]),String(w[1])]).slice(0,4) };
-    if (t.scene && typeof t.scene === "object") {
-      const s = t.scene;
-      x.scene = { ep:String(s.ep||""), time:String(s.time||""), who:String(s.who||""), where:String(s.where||""), mood: MOODS[s.mood] ? s.mood : MOOD_KEYS[hash(s.line_en||"")%MOOD_KEYS.length], ctx_ru:String(s.ctx_ru||""), line_en:String(s.line_en||"") };
-    }
-    x.question = String(t.question||""); x.hint = String(t.hint||"");
-    if (mode !== "words" && (!x.scene || !x.scene.line_en) && x.type !== "pairs") continue;
-    if (mode === "words" && !x.question && x.type !== "pairs") continue;
-    if (x.type === "choice") {
-      const o = (Array.isArray(t.options)?t.options:[]).map(String).filter(Boolean);
-      const a = Number(t.answer);
-      if (o.length < 2 || !(a >= 0 && a < o.length)) continue;
-      x.options = o; x.answer = a;
-    } else if (x.type === "build") {
-      x.answer_ru = String(t.answer_ru||"").replace(/[«»"]/g,"").trim();
-      if (!x.answer_ru) continue;
-      x.distractors = (Array.isArray(t.distractors)?t.distractors:[]).map(String).filter(Boolean).slice(0,5);
-    } else if (x.type === "type") {
-      x.accepted = (Array.isArray(t.accepted)?t.accepted:[]).map(String).filter(Boolean);
-      if (!x.accepted.length) continue;
-    } else if (x.type === "pairs") {
-      x.pairs = (Array.isArray(t.pairs)?t.pairs:[]).filter(p=>Array.isArray(p)&&p.length>=2&&p[0]&&p[1]).map(p=>[String(p[0]),String(p[1])]).slice(0,6);
-      if (x.pairs.length < 3) continue;
-    } else continue;
-    out.push(x);
+  for (let w of String(line).toLowerCase().replace(/[’']/g, "").split(/[^a-z-]+/)) {
+    w = w.replace(/^-+|-+$/g, "");
+    if (w.length >= 4 && !STOP.has(w) && !out.includes(w)) out.push(w);
   }
   return out;
+}
+
+/* ---------- mini AI: an English→Russian translation model that runs in the browser ---------- */
+const TR_KEY = "ptizasova.tr";
+let TR = {}; try { TR = JSON.parse(localStorage.getItem(TR_KEY)) || {}; } catch(e){}
+function saveTR(){ try { const ks = Object.keys(TR); if (ks.length > 3000) for (const k of ks.slice(0, ks.length - 3000)) delete TR[k]; localStorage.setItem(TR_KEY, JSON.stringify(TR)); } catch(e){} }
+const MT = { pipe:null, loading:null, onProgress:null, failed:false };
+const MT_LIB = "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.0.2";
+const MT_MODEL = "Xenova/opus-mt-en-ru";
+function loadTranslator(onProgress){
+  MT.onProgress = onProgress || null;
+  if (MT.pipe) return Promise.resolve(MT.pipe);
+  if (!MT.loading) {
+    const files = {};
+    MT.loading = (async () => {
+      const tf = await import(MT_LIB);
+      tf.env.allowLocalModels = false;
+      const pipe = await tf.pipeline("translation", MT_MODEL, {
+        progress_callback: e => {
+          if (e && e.status === "progress" && e.total) {
+            files[e.file] = [e.loaded, e.total];
+            let l = 0, t = 0; for (const k in files) { l += files[k][0]; t += files[k][1]; }
+            if (MT.onProgress) MT.onProgress(t ? l / t : 0);
+          }
+        }
+      });
+      MT.pipe = pipe; MT.failed = false;
+      try { localStorage.setItem("ptizasova.mt", "1"); } catch(e){}
+      return pipe;
+    })().catch(e => { MT.loading = null; MT.failed = true; throw e; });
+  }
+  return MT.loading;
+}
+const mtCached = () => { try { return localStorage.getItem("ptizasova.mt") === "1"; } catch(e){ return false; } };
+async function myMemory(text, signal){
+  const r = await fetch("https://api.mymemory.translated.net/get?langpair=en%7Cru&q=" + encodeURIComponent(text), { signal });
+  const j = await r.json();
+  const t = j && j.responseData && j.responseData.translatedText;
+  if (!t || j.responseStatus != 200 || /MYMEMORY WARNING|INVALID/i.test(t)) throw new Error("mymemory");
+  return t;
+}
+async function translateAll(texts, ui, signal){
+  const out = texts.map(t => TR[t] || "");
+  const todo = texts.map((t, i) => out[i] ? -1 : i).filter(i => i >= 0);
+  if (!todo.length) return out;
+  let pipe = null;
+  try { ui("model", 0); pipe = await loadTranslator(p => ui("model", p)); } catch(e){ pipe = null; }
+  for (let k = 0; k < todo.length; k++) {
+    if (signal && signal.aborted) throw { code:"cancelled" };
+    const i = todo[k]; ui("translate", k, todo.length);
+    let r = "";
+    if (pipe) { try { const res = await pipe(texts[i], { max_new_tokens:160 }); r = ((Array.isArray(res) ? res[0] : res) || {}).translation_text || ""; } catch(e){} }
+    if (!r) { try { r = await myMemory(texts[i], signal); } catch(e){ if (signal && signal.aborted) throw { code:"cancelled" }; } }
+    r = String(r).replace(/\s+/g, " ").trim();
+    if (r) { out[i] = r; TR[texts[i]] = r; }
+  }
+  saveTR();
+  return out;
+}
+
+/* ---------- searching the internet: Wikipedia finds the show, Wikiquote gives its lines ---------- */
+const WP_RU = "https://ru.wikipedia.org/w/api.php", WP_EN = "https://en.wikipedia.org/w/api.php", WQ = "https://en.wikiquote.org/w/api.php";
+async function mw(base, params, signal){
+  let r;
+  try { r = await fetch(base + "?" + new URLSearchParams({ ...params, format:"json", formatversion:"2", origin:"*" }), { signal }); }
+  catch(e){ throw { code: e && e.name === "AbortError" ? "cancelled" : "network" }; }
+  if (!r.ok) throw { code:"network" };
+  return r.json();
+}
+const KIND_RU = /(теле|мульт)?сериал|фильм|мультфильм|аниме|ситком|мини-сериал/i;
+const KIND_EN = /\((?:[^)]*\b)?(TV series|film|miniseries|animated series|web series|anime|sitcom)\)/i;
+const firstPage = d => (d && d.query && d.query.pages && d.query.pages[0]) || null;
+const stripParen = t => String(t || "").replace(/\s*\([^)]*\)\s*$/, "").trim();
+function kindFrom(title){
+  const t = String(title || "");
+  if (/мульт|animated/i.test(t)) return "мультфильм";
+  if (/аниме|anime/i.test(t)) return "аниме";
+  if (/сериал|series|sitcom|ситком/i.test(t)) return "сериал";
+  if (/фильм|film/i.test(t)) return "фильм";
+  return "";
+}
+function pickHit(hits, q){
+  const nq = norm(q);
+  return hits.find(h => KIND_RU.test(h.title) && norm(h.title).startsWith(nq))
+      || hits.find(h => KIND_EN.test(h.title) && norm(h.title).startsWith(nq))
+      || hits.find(h => norm(stripParen(h.title)) === nq && (KIND_RU.test(h.snippet || "") || /series|film|sitcom|anime/i.test(h.snippet || "")))
+      || hits.find(h => KIND_RU.test(h.title) || KIND_EN.test(h.title))
+      || hits[0] || null;
+}
+async function resolveQuotePage(enTitle, signal){
+  for (const t of [enTitle, stripParen(enTitle)]) {
+    const p = firstPage(await mw(WQ, { action:"query", titles:t, redirects:"1", prop:"pageprops" }, signal));
+    if (p && !p.missing && !p.invalid && !(p.pageprops && "disambiguation" in p.pageprops)) return p.title;
+  }
+  const s = await mw(WQ, { action:"query", list:"search", srsearch:stripParen(enTitle), srlimit:"6", srnamespace:"0" }, signal);
+  const hits = (s.query && s.query.search) || [];
+  const base = norm(stripParen(enTitle));
+  const h = hits.find(x => norm(x.title) === norm(enTitle)) || hits.find(x => norm(stripParen(x.title)) === base) || hits.find(x => norm(x.title).startsWith(base));
+  return h ? h.title : null;
+}
+function ambiguous(hits, q, kindRe){
+  const nq = norm(q);
+  const c = hits.filter(h => kindRe.test(h.title) && norm(stripParen(h.title)) === nq).map(h => h.title);
+  return c.length > 1 ? c.slice(0, 5) : null;
+}
+async function findShow(q, ui, signal, pick){
+  ui("search");
+  let ruTitle = "", enTitle = "";
+  if (/[а-яё]/i.test(q)) {
+    let hit = pick ? { title:pick } : null;
+    if (!hit) {
+      const s = await mw(WP_RU, { action:"query", list:"search", srsearch:q, srlimit:"10", srnamespace:"0" }, signal);
+      const hits = (s.query && s.query.search) || [];
+      const many = ambiguous(hits, q, KIND_RU); if (many) throw { code:"choose", options:many };
+      hit = pickHit(hits, q);
+    }
+    if (!hit) throw { code:"not_found" };
+    ruTitle = hit.title;
+    const p = firstPage(await mw(WP_RU, { action:"query", titles:ruTitle, prop:"langlinks", lllang:"en", redirects:"1" }, signal));
+    enTitle = p && p.langlinks && p.langlinks[0] && p.langlinks[0].title;
+    if (!enTitle) throw { code:"no_quotes", title:stripParen(ruTitle) };
+  } else {
+    let hit = pick ? { title:pick } : null;
+    if (!hit) {
+      const s = await mw(WP_EN, { action:"query", list:"search", srsearch:q, srlimit:"10", srnamespace:"0" }, signal);
+      const hits = (s.query && s.query.search) || [];
+      const many = ambiguous(hits, q, KIND_EN); if (many) throw { code:"choose", options:many };
+      hit = pickHit(hits, q);
+    }
+    if (!hit) throw { code:"not_found" };
+    enTitle = hit.title;
+    const p = firstPage(await mw(WP_EN, { action:"query", titles:enTitle, prop:"langlinks", lllang:"ru", redirects:"1" }, signal));
+    ruTitle = (p && p.langlinks && p.langlinks[0] && p.langlinks[0].title) || "";
+  }
+  let poster = "";
+  try {
+    const p = firstPage(await mw(WP_EN, { action:"query", titles:enTitle, prop:"pageimages", piprop:"thumbnail", pithumbsize:"960", redirects:"1" }, signal));
+    poster = (p && p.thumbnail && p.thumbnail.source) || "";
+  } catch(e){ if (e && e.code === "cancelled") throw e; }
+  ui("quotes");
+  const page = await resolveQuotePage(enTitle, signal);
+  if (!page) throw { code:"no_quotes", title:stripParen(ruTitle || enTitle) };
+  const d = await mw(WQ, { action:"parse", page, prop:"text", redirects:"1", disableeditsection:"1" }, signal);
+  const html = d && d.parse && d.parse.text;
+  const quotes = html ? parseQuotes(typeof html === "string" ? html : html["*"]) : [];
+  if (quotes.length < 3) throw { code:"no_quotes", title:stripParen(ruTitle || enTitle) };
+  return { title_ru: stripParen(ruTitle) || stripParen(enTitle), title_en: stripParen(enTitle), kind: kindFrom(ruTitle || enTitle), poster, quotes, source:page };
+}
+
+/* Wikiquote pages: h2 = season or character, h3 = episode "Title [1.01]", dd/li = lines like "Butcher: Oi!" */
+function parseQuotes(html){
+  const doc = new DOMParser().parseFromString(html, "text/html");
+  doc.querySelectorAll(".mw-editsection, sup, .reference, style, script, table, .toc, #toc, .navbox, .reflist, .references, .thumb, figure, .gallery, .noprint").forEach(n => n.remove());
+  const clean = s => String(s || "").replace(/\s+/g, " ").trim();
+  const SKIP = /^(external links|see also|references|cast|about|quotes about|notes|sources|bibliography|further reading|taglines|related)/i;
+  const NOT_NAME = /season|episode|series|quotes|dialogue|part|chapter|other|miscellaneous|unsourced|film|movie|book|volume|act|scene|\d/i;
+  const out = [], seen = new Set();
+  let h2 = "", h3 = "", skip = false, season = 0, ep = 0;
+  for (const el of doc.querySelectorAll("h2, h3, h4, li, dd")) {
+    const tag = el.tagName;
+    if (tag === "H2") { h2 = clean(el.textContent); h3 = ""; skip = SKIP.test(h2); const m = h2.match(/season\s*(\d+)/i); season = m ? +m[1] : 0; ep = 0; continue; }
+    if (tag === "H3") { h3 = clean(el.textContent); const m = h3.match(/\[?\s*(\d+)\s*[.x×]\s*(\d+)\s*\]?/); if (m) { season = +m[1]; ep = +m[2]; } else ep = 0; continue; }
+    if (tag === "H4" || skip) continue;
+    if (el.parentElement && el.parentElement.closest("li")) continue;          // nested bullets are usually attributions
+    const c = el.cloneNode(true); c.querySelectorAll("ul, ol, dl").forEach(n => n.remove());
+    const txt = clean(c.textContent); if (!txt) continue;
+    let who = "", line = txt;
+    const m = txt.match(/^([A-Z][A-Za-z0-9 .'’\-]{0,30}?)\s*:\s+(.+)$/);
+    if (m && m[1].split(/\s+/).length <= 4) { who = m[1]; line = m[2]; }
+    else if (h2 && !NOT_NAME.test(h2) && h2.split(/\s+/).length <= 4) who = h2;
+    line = line.replace(/\[[^\]]*\]/g, " ").replace(/\((?:[^()]{0,60})\)/g, " ").replace(/^[\s"“”'‘’—–-]+|[\s"“”'‘’]+$/g, "").replace(/\s+/g, " ").trim();
+    const wc = line ? line.split(" ").length : 0;
+    if (wc < 2 || wc > 24 || !/[a-z]/i.test(line) || /[а-яё]/i.test(line) || /^(Directed|Written|Teleplay|Season|Episode|Starring)\b/i.test(line)) continue;
+    const k = norm(line); if (seen.has(k)) continue; seen.add(k);
+    out.push({ who, line, ep: season && ep ? `S${season}E${ep}` : season ? `S${season}` : "", where: clean(h3.replace(/\[[^\]]*\]/g, "").replace(/\([^)]*\)\s*$/, "")), wc });
+    if (out.length >= 700) break;
+  }
+  return out;
+}
+
+/* ---------- building lessons ---------- */
+const FILLER_RU = ["Я никогда этого не говорил.","Пойдём домой.","Это не моя проблема.","Ты опоздал.","Мне нужна помощь.","Где деньги?","Не смотри на меня.","Всё будет хорошо."];
+const MOVIE_ORDER = ["choice","build","choice","type","build","choice","type","build","choice"];
+function pickQuotes(c, n){
+  const lim = MAXW[S.cefr] + (n > 5 ? 3 : 0) - (n <= 2 ? 2 : 0);
+  const used = new Set(c.used || []);
+  const all = c.quotes.map((q, i) => ({ q, i }));
+  let pool = all.filter(x => !used.has(x.i) && x.q.wc <= Math.max(4, lim));
+  if (pool.length < 4) pool = all.filter(x => !used.has(x.i));
+  if (pool.length < 4) { c.used = []; pool = all; }
+  return pool.slice(0, 9);
+}
+async function buildSceneTasks(quotes, ui, signal, opts){
+  const lines = quotes.map(q => q.line);
+  const words = quotes.map(q => contentWords(q.line).sort((a, b) => (DICT[b] ? 1 : 0) - (DICT[a] ? 1 : 0)).slice(0, 2));
+  const pairWords = [...new Set(words.flat())].slice(0, 5);
+  const needWords = [...new Set(words.flat())].filter(w => !DICT[w]);
+  const tr = await translateAll([...lines, ...needWords], ui, signal);
+  const ruOf = {}; [...lines, ...needWords].forEach((t, i) => { if (tr[i]) ruOf[t] = tr[i]; });
+  const wordRu = w => DICT[w] || ruOf[w] || "";
+  ui("build");
+  const ok = quotes.map((q, i) => ({ q, ru: ruOf[q.line], words: words[i] })).filter(x => x.ru);
+  if (!ok.length) throw { code:"translate_failed" };
+  const allRu = ok.map(x => x.ru);
+  const tasks = ok.map((x, k) => {
+    const scene = { ep:x.q.ep || "", time:"", who:x.q.who || "", where:x.q.where || opts.where || "", mood:MOOD_KEYS[hash(x.q.line) % MOOD_KEYS.length], ctx_ru:"", line_en:x.q.line };
+    const base = { scene, explain_ru:"", words: x.words.map(w => [w, wordRu(w)]).filter(w => w[1]) };
+    let type = MOVIE_ORDER[k % MOVIE_ORDER.length];
+    const ruWords = x.ru.replace(/[.,!?…;:«»"“”]/g, "").split(/\s+/).filter(Boolean);
+    if (type === "build" && (ruWords.length < 2 || ruWords.length > 11)) type = "choice";
+    if (type === "choice") {
+      const others = shuffle(allRu.filter(r => norm(r) !== norm(x.ru)));
+      const fill = shuffle(FILLER_RU.filter(r => norm(r) !== norm(x.ru)));
+      const opts3 = [...others, ...fill].slice(0, 3);
+      const options = shuffle([x.ru, ...opts3]);
+      return { ...base, type, options, answer: options.indexOf(x.ru) };
+    }
+    if (type === "build") {
+      const extra = shuffle(allRu.filter(r => r !== x.ru).join(" ").replace(/[.,!?…;:«»"“”]/g, "").split(/\s+/).filter(w => w && !ruWords.map(norm).includes(norm(w))));
+      return { ...base, type, answer_ru: ruWords.join(" "), distractors: [...new Set(extra)].slice(0, 4) };
+    }
+    return { ...base, type:"type", accepted:[x.ru] };
+  });
+  const pairs = pairWords.map(w => [w, wordRu(w)]).filter(p => p[1] && norm(p[1]) !== norm(p[0]));
+  if (pairs.length >= 3) {
+    const q = ok[0].q;
+    tasks.push({ type:"pairs", scene:{ ep:q.ep || "", time:"", who:"", where:"", mood:"night", ctx_ru:"", line_en:"" }, pairs:pairs.slice(0, 5), explain_ru:"", words:[] });
+  }
+  return tasks;
+}
+function wordsTasks(list, n){
+  const per = 6, start = ((n - 1) * per) % list.length;
+  const ws = Array.from({ length: Math.min(per, list.length) }, (_, i) => list[(start + i) % list.length]);
+  const pool = list;
+  const otherRu = w => shuffle(pool.filter(x => x.en !== w.en && norm(x.ru) !== norm(w.ru)).map(x => x.ru)).slice(0, 3);
+  const otherEn = w => shuffle(pool.filter(x => x.en !== w.en).map(x => x.en)).slice(0, 3);
+  const mk = (w, extra) => ({ explain_ru: w.ex ? "Пример: " + w.ex : "", words:[[w.en, w.ru]], ...extra });
+  const enRu = w => { const options = shuffle([w.ru, ...otherRu(w)]); return mk(w, { type:"choice", question:w.en, hint:w.ex || "", options, answer:options.indexOf(w.ru) }); };
+  const ruEn = w => { const options = shuffle([w.en, ...otherEn(w)]); return mk(w, { type:"choice", question:w.ru, hint:"Выбери английский вариант", options, answer:options.indexOf(w.en) }); };
+  const fill = w => {
+    const re = new RegExp("\\b" + w.en.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\b", "i");
+    if (!w.ex || !re.test(w.ex)) return enRu(w);
+    const options = shuffle([w.en, ...otherEn(w)]);
+    return mk(w, { type:"choice", question:w.ex.replace(re, "___"), hint:"Подсказка: " + w.ru, options, answer:options.indexOf(w.en) });
+  };
+  const typ = w => mk(w, { type:"type", question:w.ru, hint:"Напиши по-английски", accepted:[w.en] });
+  const at = i => ws[i % ws.length];
+  const tasks = [enRu(at(0)), enRu(at(1)), ruEn(at(2)), fill(at(3)), enRu(at(4)), typ(at(0)), ruEn(at(5)), fill(at(1)), typ(at(2))];
+  const pairs = shuffle(ws).slice(0, 5).map(w => [w.en, w.ru]);
+  if (pairs.length >= 3) tasks.push({ type:"pairs", question:"", pairs, explain_ru:"", words:[] });
+  return tasks;
+}
+async function wordsFromShow(c, ui, signal){
+  if (!c.showWords) {
+    const show = await findShow(c.theme, ui, signal, c.pick);
+    const freq = {}, ex = {};
+    for (const q of show.quotes) for (const w of contentWords(q.line)) { freq[w] = (freq[w] || 0) + 1; if (!ex[w] || q.wc < ex[w].split(" ").length) ex[w] = q.line; }
+    const top = Object.keys(freq).filter(w => freq[w] >= 2 || DICT[w]).sort((a, b) => freq[b] - freq[a]).slice(0, 60);
+    const list = (top.length >= 6 ? top : Object.keys(freq).slice(0, 60));
+    const tr = await translateAll(list.filter(w => !DICT[w]), ui, signal);
+    const ru = {}; list.filter(w => !DICT[w]).forEach((w, i) => { if (tr[i]) ru[w] = tr[i]; });
+    c.showWords = list.map(w => ({ en:w, ru: DICT[w] || ru[w] || "", ex: ex[w] })).filter(w => w.ru && norm(w.ru) !== norm(w.en));
+    c.title_ru = "Слова: " + show.title_ru; c.poster = show.poster; c.title_en = show.title_en;
+  }
+  if (c.showWords.length < 4) throw { code:"no_quotes", title:c.theme };
+  return c.showWords;
+}
+
+/* ---------- OCR for an uploaded frame (reads English subtitles) ---------- */
+function loadScript(src){
+  return new Promise((res, rej) => { if (document.querySelector(`script[src="${src}"]`) && window.Tesseract) return res(); const s = document.createElement("script"); s.src = src; s.onload = res; s.onerror = () => rej({ code:"network" }); document.head.appendChild(s); });
+}
+async function ocrQuotes(dataUrl, ui){
+  ui("ocr", 0);
+  await loadScript("https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js");
+  let text = "";
+  try {
+    const r = await window.Tesseract.recognize(dataUrl, "eng", { logger: m => { if (m && m.status === "recognizing text") ui("ocr", m.progress || 0); } });
+    text = (r && r.data && r.data.text) || "";
+  } catch(e){ throw { code:"ocr_failed" }; }
+  const lines = text.split(/\n+/).map(l => l.replace(/[|_~=<>{}\\]/g, " ").replace(/\s+/g, " ").trim())
+    .filter(l => l.split(" ").length >= 2 && (l.match(/[a-z]/gi) || []).length / l.length > 0.6);
+  const sentences = lines.join(" ").replace(/^[-–—\s]+/, "").split(/(?<=[.!?])\s+|\s+[-–—]\s+/).map(s => s.trim()).filter(s => s.split(" ").length >= 2);
+  if (!sentences.length) throw { code:"no_text" };
+  return sentences.slice(0, 9).map(line => ({ who:"", line, ep:"", where:"Твой кадр", wc:line.split(" ").length }));
 }
 
 /* ---------- routing ---------- */
@@ -558,7 +870,7 @@ function header(){
       <span class="stat" title="Дней подряд">${I.fire}${streakNow()}</span>
       <span class="stat" title="Опыт">${I.bolt}${S.xp}</span>
       <button class="stat" data-act="vocab" title="Мой словарь">${I.book}${S.vocab.length}</button>
-      <button class="stat" data-act="settings" title="Настройки" aria-label="Настройки">${I.gear}</button>
+      <button class="stat" data-act="settings" title="Мини-ИИ" aria-label="Мини-ИИ и источники">${I.gear}</button>
     </div>
   </div>`;
 }
@@ -581,12 +893,10 @@ function render(){
 function homeView(){
   const examples = ["Пацаны","Во все тяжкие","Друзья","Шрек","Гарри Поттер","Офис"];
   const list = S.order.map(k => S.courses[k]).filter(Boolean);
-  const aiNote = aiMode() === "off"
-    ? `<div class="notice"><b>Сейчас работают демо-уроки</b> по «Пацанам» и «Словам». Чтобы создавать уроки по любому сериалу, <button class="link" data-act="settings" style="padding:0">подключи ключ Claude API</button>.</div>`
-    : "";
+  const aiNote = mtCached() ? "" : `<div class="notice"><b>Первый урок по фильму загрузится дольше:</b> приложение один раз скачает мини-ИИ переводчик (около 100 МБ). Лучше через Wi-Fi.</div>`;
   return `<section class="hero">
     <h1>Учи английский по любимым сценам</h1>
-    <p>Напиши фильм или сериал, и приложение соберёт урок из 10 моментов оттуда. Напиши «Слова», чтобы учить новую лексику.</p>
+    <p>Напиши фильм или сериал: приложение найдёт его реплики в интернете, а встроенный мини-ИИ переведёт их. Напиши «Слова», чтобы учить новую лексику. Всё бесплатно.</p>
     <form class="search" id="searchForm" autocomplete="off">
       <input id="q" name="q" placeholder="Что смотрим? Например, Пацаны" aria-label="Фильм, сериал или «Слова»" maxlength="80">
       <button class="btn" type="submit">Найти</button>
@@ -595,6 +905,7 @@ function homeView(){
       ${examples.map(e => `<button class="chip" data-q="${esc(e)}">${esc(e)}</button>`).join("")}
       <button class="chip words" data-q="Слова">Слова</button>
       <button class="chip words" data-q="Слова: путешествия">Слова: путешествия</button>
+      <button class="chip words" data-q="Слова: сленг">Слова: сленг</button>
     </div>
     <div class="levelrow"><span class="muted">Мой уровень:</span>
       <span class="seg" role="group" aria-label="Уровень английского">${["A1","A2","B1","B2","C1"].map(l => `<button data-cefr="${l}" aria-pressed="${S.cefr===l}">${l}</button>`).join("")}</span>
@@ -606,17 +917,17 @@ function homeView(){
     ${list.length ? `<div class="courses">${list.map(courseCard).join("")}</div>`
       : `<div class="notice">Здесь появятся твои курсы. Начни с «Пацанов» или «Слов» выше.</div>`}
   </section>
-  ${aiMode() !== "off" ? `<section class="section">
+  ${`<section class="section">
     <div class="eyebrow">Свой кадр</div>
-    <button class="upload" data-act="upload" ${aiMode()==="claude" && !canImages ? "disabled" : ""}>${I.camera}
-      <div><b>Загрузить скриншот из фильма</b><span>${aiMode()==="claude" && !canImages ? "В этом просмотре картинки отправлять нельзя." : "Claude узнает сцену и сделает 10 заданий по этому кадру."}</span></div>
+    <button class="upload" data-act="upload">${I.camera}
+      <div><b>Загрузить кадр с субтитрами</b><span>Мини-ИИ прочитает английские субтитры на скриншоте и сделает задания по ним.</span></div>
     </button>
-  </section>` : ""}`;
+  </section>`}`;
 }
 function courseCard(c){
   const per = 8, unitDone = c.done % per;
   return `<button class="course" data-open="${esc(c.key)}">
-    <span class="poster" style="background:${c.mode==="frame"&&c.image?`url(${c.image}) center/cover`:posterBg(c.key)}">${esc((c.title_ru||c.query).trim().charAt(0).toUpperCase())}</span>
+    <span class="poster" style="background:${c.image||c.poster?`url('${esc(c.image||c.poster)}') center/cover`:posterBg(c.key)}">${c.image||c.poster ? "" : esc((c.title_ru||c.query).trim().charAt(0).toUpperCase())}</span>
     <span class="meta"><b>${esc(c.title_ru||c.query)}</b><span>${esc(c.kind || (c.mode==="words"?"слова":"сериал"))}${c.title_en && c.title_en!==c.title_ru ? " · " + esc(c.title_en) : ""}</span>
       <span class="bar"><i style="width:${(c.mode==="frame" ? (c.done?100:0) : unitDone/per*100)}%"></i></span></span>
     <span class="lvl">ур. ${c.done+1}</span>
@@ -658,10 +969,11 @@ function courseView(){
       </button></div>`;
   }
   return `<button class="link" data-act="home">← Все курсы</button>
-  <div class="coursehead"><span class="poster" style="background:${posterBg(c.key)}">${esc((c.title_ru||c.query).charAt(0).toUpperCase())}</span>
+  <div class="coursehead"><span class="poster" style="background:${c.poster?`url('${esc(c.poster)}') center/cover`:posterBg(c.key)}">${c.poster ? "" : esc((c.title_ru||c.query).charAt(0).toUpperCase())}</span>
     <div style="min-width:0"><h2>${esc(c.title_ru||c.query)}</h2>
-    <div class="sub">${esc(c.title_en || "")}${c.title_en?" · ":""}пройдено ${c.done} ${plural(c.done,"урок","урока","уроков")} · сложность ${difficulty(c.done+1)}</div></div></div>
+    <div class="sub">${esc(c.title_en || "")}${c.title_en?" · ":""}${c.quotes && c.mode==="movie" ? `${c.quotes.length} ${plural(c.quotes.length,"реплика","реплики","реплик")} · ` : ""}пройдено ${c.done} ${plural(c.done,"урок","урока","уроков")} · сложность ${difficulty(c.done+1)}</div></div></div>
   ${route.error ? `<div class="err">${esc(route.error)} <button class="link" data-lesson="${c.done+1}">Попробовать снова</button></div>` : ""}
+  ${route.choose ? `<div class="notice" style="display:grid;gap:8px"><b>Нашлось несколько вариантов. Какой из них?</b>${route.choose.map(t => `<button class="chip" style="text-align:left" data-pick="${esc(t)}">${esc(t)}</button>`).join("")}</div>` : ""}
   <div class="path">${nodes}</div>
   <div class="row"><button class="link" data-del="${esc(c.key)}">Удалить курс</button></div>`;
 }
@@ -671,76 +983,87 @@ async function startLesson(key, n){
   const c = S.courses[key]; if (!c) return;
   const cached = c.lessons && c.lessons[n];
   if (cached) return play(c, n, cached);
-  const sample = await engine();
-  if (!sample) {
-    const demo = demoFor(c);
-    if (demo && (n === 1 || c.mode === "words")) return play(c, n, demo);
-    return go({ name:"course", key, error: demo ? "В демо-режиме доступен только первый урок. Чтобы открыть следующие, подключи ключ Claude API в настройках (шестерёнка вверху)." : "Уроки по этому запросу создаёт Claude. Подключи ключ Claude API в настройках (шестерёнка вверху) или попробуй демо: «Пацаны» и «Слова»." });
-  }
   genCtl = new AbortController();
-  go({ name:"loading", key, n, found:0, mode:c.mode });
-  const prompt = c.mode === "words" ? wordsPrompt(c, n) : c.mode === "frame" ? framePrompt() : moviePrompt(c, n);
-  const opts = {
-    signal: genCtl.signal, cache:false,
-    onText: ({ text }) => {
-      const f = Math.min(10, (text.match(/"type"\s*:/g) || []).length);
-      if (route.name === "loading" && f !== route.found) { route.found = f; updateLoading(); }
-    }
+  const signal = genCtl.signal;
+  go({ name:"loading", key, n, mode:c.mode, step:"", pct:0 });
+  const ui = (step, a, b) => {
+    if (route.name !== "loading" || route.key !== key) return;
+    route.step = step;
+    route.pct = step === "translate" ? (b ? a / b : 0) : (typeof a === "number" ? a : 0);
+    route.of = b || 0; route.at = a || 0;
+    updateLoading();
   };
-  if (c.mode === "frame") opts.images = [dataUrlToBlob(c.image)];
   try {
-    const data = await sample.json(prompt, opts);
-    if (!data || data.known === false) {
-      return go({ name:"course", key, error: "Не нашёл такое произведение. " + ((data && data.reason_ru) || "Проверь название или напиши его по-английски.") });
+    let tasks;
+    if (c.mode === "words") {
+      if (c.theme === "мой словарь") {
+        const list = S.vocab.map(v => ({ en:v[0], ru:v[1], ex:"" }));
+        if (list.length < 4) throw { code:"few_words" };
+        tasks = wordsTasks(shuffle(list), n);
+      } else {
+        const th = findTheme(c.theme);
+        if (th) { c.title_ru = th.name; tasks = wordsTasks(th.list, n); }
+        else tasks = wordsTasks(await wordsFromShow(c, ui, signal), n);
+      }
+    } else if (c.mode === "frame") {
+      if (!c.quotes) c.quotes = await ocrQuotes(c.image, ui);
+      tasks = await buildSceneTasks(c.quotes, ui, signal, { where:"Твой кадр" });
+    } else {
+      if (!c.quotes) {
+        const show = await findShow(c.query, ui, signal, c.pick);
+        Object.assign(c, { title_ru:show.title_ru, title_en:show.title_en, kind:show.kind || c.kind, poster:show.poster, quotes:show.quotes, source:show.source, used:[] });
+        save();
+      }
+      const picks = pickQuotes(c, n);
+      tasks = await buildSceneTasks(picks.map(x => x.q), ui, signal, {});
+      c.used = [...new Set([...(c.used || []), ...picks.map(x => x.i)])];
     }
-    const tasks = cleanTasks(data.tasks, c.mode);
-    if (tasks.length < 5) return go({ name:"course", key, error:"Урок получился неполным. Попробуй ещё раз." });
-    const lesson = { title_ru:data.title_ru, title_en:data.title_en, kind:data.kind, tasks };
-    if (data.title_ru && c.mode !== "words") c.title_ru = String(data.title_ru);
-    if (data.title_ru && c.mode === "words" && !c.theme) c.title_ru = "Слова";
-    if (data.title_en) c.title_en = String(data.title_en);
-    if (data.kind) c.kind = String(data.kind);
+    const lesson = { tasks };
     c.lessons[n] = lesson;
-    for (const t of tasks) {
-      if (c.mode === "words") { if (t.words[0]) c.seen.push(t.words[0][0]); }
-      else if (t.scene && t.scene.line_en) c.seen.push(t.scene.line_en);
-    }
-    c.seen = c.seen.slice(-120);
-    // keep only the last few lessons cached to save space
-    const ks = Object.keys(c.lessons).map(Number).sort((a,b)=>a-b);
+    const ks = Object.keys(c.lessons).map(Number).sort((a, b) => a - b);
     while (ks.length > 3) delete c.lessons[ks.shift()];
     save();
     play(c, n, lesson);
   } catch(e) {
-    if (e && e.code === "cancelled") return go({ name:"course", key });
-    go({ name:"course", key, error: errText(e) });
+    if (e && e.code === "cancelled" || signal.aborted) return go({ name:"course", key });
+    if (e && e.code === "choose") return go({ name:"course", key, choose:e.options, n });
+    const demo = demoFor(c);
+    if (demo && e && e.code === "network" && n === 1) return play(c, n, demo);
+    go({ name:"course", key, error: e && e.code === "few_words" ? "В словаре пока мало слов. Пройди пару уроков, и слова появятся." : errText(e) });
   } finally { genCtl = null; }
 }
 function loadingView(){
   const c = S.courses[route.key];
-  const what = route.mode === "words" ? "Подбираю слова" : route.mode === "frame" ? "Разглядываю кадр" : "Ищу моменты";
+  const what = route.mode === "words" ? "Подбираю слова" : route.mode === "frame" ? "Разбираю кадр" : "Ищу моменты";
   return `<div class="loading">
     ${I.reel}
     <h2>${what}${route.mode==="movie" ? ` из «${esc(c ? c.title_ru||c.query : "")}»` : ""}</h2>
-    <div class="dots" id="dots">${Array.from({length:10},(_,i)=>`<i class="${i<route.found?"on":""}"></i>`).join("")}</div>
+    <div class="progress" style="width:min(320px,100%);flex:none"><i id="lbar" style="width:${Math.round((route.pct||0)*100)}%"></i></div>
     <div class="found" id="found">${foundText()}</div>
-    <p class="muted" style="max-width:40ch;margin:0">Claude вспоминает сцены и собирает задания. Обычно это занимает до минуты.</p>
+    <p class="muted" style="max-width:42ch;margin:0">Реплики берутся с Wikiquote, переводит мини-ИИ прямо на твоём устройстве. Всё бесплатно.</p>
     <button class="btn ghost" data-act="stop">Отменить</button>
   </div>`;
 }
 function foundText(){
-  const f = route.found;
-  if (!f) return "Думаю…";
-  return route.mode === "words" ? `Готово ${f} из 10 заданий` : `Найдено ${f} ${plural(f,"момент","момента","моментов")} из 10`;
+  const pct = Math.round((route.pct || 0) * 100);
+  switch (route.step) {
+    case "search": return "Ищу в Википедии…";
+    case "quotes": return "Скачиваю реплики с Wikiquote…";
+    case "model": return mtCached() ? "Запускаю мини-ИИ…" : `Скачиваю мини-ИИ переводчик (один раз, около 100 МБ): ${pct}%`;
+    case "translate": return `Мини-ИИ переводит: ${route.at + 1} из ${route.of}`;
+    case "ocr": return `Читаю субтитры на кадре: ${pct}%`;
+    case "build": return "Собираю задания…";
+    default: return "Начинаю…";
+  }
 }
 function updateLoading(){
-  const d = $("#dots"); if (d) [...d.children].forEach((el,i)=>el.classList.toggle("on", i < route.found));
+  const b = $("#lbar"); if (b) b.style.width = Math.round((route.pct || 0) * 100) + "%";
   const f = $("#found"); if (f) f.textContent = foundText();
 }
 
 /* ---------- lesson engine ---------- */
 function play(c, n, lesson){
-  L = { key:c.key, n, mode:c.mode, image:c.image||null, tasks:lesson.tasks, queue:lesson.tasks.map((_,i)=>i), pos:0, hearts:5,
+  L = { key:c.key, n, mode:c.mode, image:c.image||c.poster||null, poster:!c.image && !!c.poster, tasks:lesson.tasks, queue:lesson.tasks.map((_,i)=>i), pos:0, hearts:5,
         firstTry:new Set(), missed:new Set(), xp:0, state:"answer", sel:null, built:[], typed:"", pairsDone:new Set(), pairSel:null, pairErr:false, verdict:null };
   go({ name:"lesson" });
 }
@@ -748,12 +1071,15 @@ const curTask = () => L.tasks[L.queue[L.pos]];
 
 function frameHTML(t){
   const s = t.scene;
-  const bg = L.image ? `<img class="img" src="${L.image}" alt="">` : `<div class="wash" style="background:${MOODS[s.mood]||MOODS.night}"></div>`;
+  const h = hash(s.line_en || s.where);
+  const bg = L.image
+    ? `<img class="img" src="${esc(L.image)}" alt="" referrerpolicy="no-referrer" style="${L.poster ? `object-position:${h % 100}% ${(h >> 4) % 100}%;transform:scale(1.35);filter:saturate(.85)` : ""}">${L.poster ? `<div class="wash" style="background:${MOODS[s.mood]||MOODS.night};opacity:.45;mix-blend-mode:multiply"></div>` : ""}`
+    : `<div class="wash" style="background:${MOODS[s.mood]||MOODS.night}"></div>`;
   return `<figure class="frame" style="margin:0">
     ${bg}
-    <div class="tc"><span class="rec">${esc(s.ep || "FILM")}</span><span>${esc(s.time)}</span></div>
+    <div class="tc"><span class="rec">${esc(s.ep || "SCENE")}</span><span>${esc(s.time)}</span></div>
     ${s.where ? `<div class="where">${esc(s.where)}</div>` : ""}
-    <figcaption class="subs">${s.who ? `<span class="who">${esc(s.who)}</span>` : ""}<span class="line">${esc(s.line_en)}</span></figcaption>
+    <figcaption class="subs">${s.who ? `<span class="who">${esc(s.who)}</span>` : ""}${s.line_en ? `<span class="line">${esc(s.line_en)}</span>` : ""}</figcaption>
   </figure>${s.ctx_ru ? `<div class="ctx">${esc(s.ctx_ru)}</div>` : ""}`;
 }
 function questionHTML(t){
@@ -824,7 +1150,7 @@ function drawBar(){
     cb.innerHTML = `<div class="in"><div class="cbrow"><button class="link" data-act="skip">Пропустить</button><button class="btn good" id="cbMain" data-act="check" ${ready()?"":"disabled"}>Проверить</button></div></div>`;
   } else if (L.state === "checking") {
     cb.className = "checkbar";
-    cb.innerHTML = `<div class="in"><div class="cbrow"><span class="muted">Claude проверяет перевод…</span><button class="btn" disabled>Проверяю</button></div></div>`;
+    cb.innerHTML = `<div class="in"><div class="cbrow"><span class="muted">Проверяю…</span><button class="btn" disabled>Проверяю</button></div></div>`;
   } else {
     const v = L.verdict, ok = v.ok;
     cb.className = "checkbar " + (ok ? "good" : "bad");
@@ -836,7 +1162,7 @@ function drawBar(){
         ${t.explain_ru ? `<p class="ex">${esc(t.explain_ru)}</p>` : ""}
         ${words.length ? `<div class="wordchips">${words.map(w=>`<span><b>${esc(w[0])}</b> — ${esc(w[1])}</span>`).join("")}</div>` : ""}
       </div>
-      <div class="cbrow"><span></span><button class="btn ${ok?"good":"bad"}" id="cbMain" data-act="next">Дальше</button></div></div>`;
+      <div class="cbrow">${!ok && L.canOverride ? `<button class="link" data-act="override">Мой ответ верный</button>` : "<span></span>"}<button class="btn ${ok?"good":"bad"}" id="cbMain" data-act="next">Дальше</button></div></div>`;
     $("#cbMain").focus({preventScroll:true});
   }
 }
@@ -852,25 +1178,26 @@ async function check(){
   } else if (t.type === "type") {
     const got = L.typed; const ta = $("#typed"); if (ta) ta.disabled = true;
     const best = Math.max(...t.accepted.map(a => sim(a, got)));
-    if (best >= 0.86) { ok = true; close = best < 1; right = best < 1 ? t.accepted[0] : ""; }
-    else if (L.mode !== "words") {
-      const sample = await engine();
-      if (sample) {
-        L.state = "checking"; drawBar();
-        try {
-          const r = await sample.json(`Ты проверяешь перевод в приложении для изучения английского. Ученик русскоязычный.
-Реплика на английском: ${JSON.stringify(t.scene.line_en)}
-Контекст сцены: ${JSON.stringify(t.scene.ctx_ru)}
-Эталонные переводы: ${JSON.stringify(t.accepted)}
-Перевод ученика: ${JSON.stringify(got)}
-Засчитай, если смысл передан верно. Опечатки, порядок слов и другой, но верный синоним не ошибка. Ответь только JSON: {"ok":true|false,"note_ru":"одно короткое предложение: что хорошо или в чём ошибка"}`, { modelTier:"quick" });
-          ok = !!(r && r.ok); note = r && r.note_ru ? String(r.note_ru) : "";
-          right = t.accepted[0]; close = ok;
-        } catch(e) { ok = best >= 0.7; right = t.accepted[0]; close = ok; if (e && e.code !== "cancelled") note = "Не удалось спросить Claude, проверил по эталону."; }
-      } else { ok = best >= 0.7; close = ok; right = t.accepted[0]; }
-    } else { right = t.accepted[0]; }
+    right = t.accepted[0];
+    if (L.mode === "words") { ok = best >= 0.86; close = ok && best < 1; if (!ok) L.canOverride = true; }
+    else {
+      const sc = Math.max(...t.accepted.map(a => meaningScore(a, got)));
+      ok = sc >= 0.55 || best >= 0.8; close = ok && sc < 0.95;
+      if (!ok) { L.canOverride = true; note = "Проверка автоматическая и иногда ошибается. Если по смыслу ты прав, нажми «Мой ответ верный»."; }
+    }
+    if (ok && !close) right = "";
   }
   finish(ok, right, note, close);
+}
+const RU_STOP = new Set("я ты он она оно мы вы они это этот эта эти что как не да нет и а но в во на с со по к ко у о об из за от до так же бы ли ну вот все всё мне меня тебе тебя его её ее их им был была было были будет есть мой моя моё твой твоя".split(" "));
+function meaningScore(ref, ans){
+  const rw = norm(ref).split(" ").filter(w => w.length >= 3 && !RU_STOP.has(w));
+  const aw = norm(ans).split(" ").filter(Boolean);
+  if (!rw.length) return sim(ref, ans);
+  const stem = w => w.slice(0, Math.max(3, Math.min(5, w.length - 2)));
+  let hit = 0;
+  for (const w of rw) if (aw.some(a => a === w || (a.length >= 3 && stem(a) === stem(w)))) hit++;
+  return hit / rw.length;
 }
 function markOptions(t){
   document.querySelectorAll(".opt").forEach(b => {
@@ -880,11 +1207,12 @@ function markOptions(t){
 }
 function finish(ok, right, note, close){
   const idx = L.queue[L.pos];
+  L.appended = false;
   if (ok) {
     if (!L.missed.has(idx)) { L.firstTry.add(idx); L.xp += 10; } else L.xp += 5;
   } else {
     L.hearts = Math.max(0, L.hearts - 1);
-    if (!L.missed.has(idx)) { L.missed.add(idx); L.queue.push(idx); }
+    if (!L.missed.has(idx)) { L.missed.add(idx); L.queue.push(idx); L.appended = true; }
     const h = $(".hearts"); if (h) h.innerHTML = I.heart + L.hearts;
   }
   L.state = "result"; L.verdict = { ok, right, note, close };
@@ -892,7 +1220,7 @@ function finish(ok, right, note, close){
 }
 function next(){
   if (L.hearts <= 0) return go({ name:"fail" });
-  L.pos++; L.state = "answer"; L.sel = null; L.built = []; L.typed = ""; L.pairsDone = new Set(); L.pairSel = null; L.pairErr = false; L.verdict = null;
+  L.pos++; L.state = "answer"; L.sel = null; L.built = []; L.typed = ""; L.pairsDone = new Set(); L.pairSel = null; L.pairErr = false; L.verdict = null; L.canOverride = false;
   if (L.pos >= L.queue.length) return complete();
   render();
 }
@@ -976,31 +1304,32 @@ function vocabView(){
 }
 
 function settingsView(){
-  const k = apiKey(), m = aiMode();
+  const ready = !!MT.pipe || mtCached();
   return `<button class="link" data-act="home">← На главную</button>
   <section class="section">
-    <h2 style="font-size:24px">Настройки</h2>
-    <div class="notice">${m === "claude" ? "<b>Сейчас уроки создаёт Claude через твой аккаунт claude.ai.</b> Ключ API нужен, только если открываешь приложение вне Claude."
-      : m === "api" ? "<b>Ключ подключён.</b> Новые уроки создаются через Claude API."
-      : "<b>Ключ не подключён.</b> Работают только демо-уроки."}</div>
-    <div class="eyebrow">Ключ Claude API</div>
-    <p class="muted" style="margin:0">С ключом приложение работает где угодно и не зависит от подписки Claude. Деньги списываются с баланса на console.anthropic.com за каждый запрос, примерно 10–20 центов за урок, проверка перевода — доли цента. Ключ хранится только в этом браузере и отправляется только на api.anthropic.com.</p>
-    <form id="keyForm" class="search" autocomplete="off">
-      <input id="apikey" name="apikey" type="password" placeholder="sk-ant-…" aria-label="Ключ Claude API" value="${esc(k)}">
-      <button class="btn" type="submit">Сохранить</button>
-    </form>
-    ${k ? `<button class="link" data-act="delkey">Удалить ключ</button>` : ""}
-    <p class="muted" style="margin:0;font-size:14px">Где взять ключ: зайди на <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">console.anthropic.com</a> → API Keys → Create Key, пополни баланс в разделе Billing.</p>
-    ${route.saved ? `<div class="notice" role="status"><b>Ключ сохранён.</b></div>` : ""}
+    <h2 style="font-size:24px">Мини-ИИ</h2>
+    <p class="muted" style="margin:0">PTIZASOVA работает без подписок и без ключей. Реплики приложение ищет на Wikiquote (через Википедию находит нужный фильм), а переводит их маленькая нейросеть, которая работает прямо на твоём устройстве.</p>
+    <div class="notice" id="mtStatus">${MT.pipe ? "<b>Мини-ИИ запущен.</b>" : ready ? "<b>Мини-ИИ скачан</b> и запустится при первом уроке." : "<b>Мини-ИИ ещё не скачан.</b> Он скачается сам при первом уроке по фильму (около 100 МБ, один раз)."}</div>
+    ${MT.pipe ? "" : `<button class="btn" data-act="preload" id="preload">${ready ? "Запустить сейчас" : "Скачать сейчас"}</button>`}
+    <div class="eyebrow">Откуда что берётся</div>
+    <div class="vocablist">
+      <div class="vrow"><b>Реплики</b><span>en.wikiquote.org</span><small></small></div>
+      <div class="vrow"><b>Поиск фильма и постер</b><span>Википедия</span><small></small></div>
+      <div class="vrow"><b>Перевод</b><span>мини-ИИ opus-mt-en-ru</span><small>в браузере</small></div>
+      <div class="vrow"><b>Запасной перевод</b><span>MyMemory</span><small>если мини-ИИ не загрузился</small></div>
+      <div class="vrow"><b>Субтитры с кадра</b><span>Tesseract</span><small>в браузере</small></div>
+      <div class="vrow"><b>Слова</b><span>встроенный словарь</span><small>${THEMES.reduce((n,t)=>n+t.list.length,0)} слов</small></div>
+    </div>
+    <p class="muted" style="margin:0;font-size:14px">Перевод делает нейросеть, поэтому иногда он неточный. Если твой перевод верный, а приложение не засчитало, нажми «Мой ответ верный».</p>
   </section>`;
+}
+async function preloadMT(){
+  const st = $("#mtStatus"), b = $("#preload"); if (b) b.disabled = true;
+  try { await loadTranslator(p => { if (st) st.innerHTML = `<b>Скачиваю мини-ИИ:</b> ${Math.round(p * 100)}%`; }); if (route.name === "settings") render(); }
+  catch(e){ if (st) st.innerHTML = "<b>Не получилось скачать мини-ИИ.</b> Проверь интернет. Уроки всё равно будут работать через запасной переводчик."; if (b) b.disabled = false; }
 }
 
 /* ---------- frame upload ---------- */
-function dataUrlToBlob(u){
-  const [head, b64] = u.split(","); const bin = atob(b64); const a = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) a[i] = bin.charCodeAt(i);
-  return new Blob([a], { type: (head.match(/data:([^;]+)/) || [,"image/jpeg"])[1] });
-}
 async function onFrame(file){
   if (!file) return;
   try {
@@ -1011,7 +1340,7 @@ async function onFrame(file){
     URL.revokeObjectURL(img.src);
     const data = cv.toDataURL("image/jpeg", 0.82);
     const key = "frame:" + Date.now();
-    S.courses[key] = { key, mode:"frame", query:"Кадр", theme:"", title_ru:"Свой кадр", title_en:"", kind:"кадр", done:0, lessons:{}, seen:[], image:data };
+    S.courses[key] = { key, mode:"frame", query:"Кадр", theme:"", title_ru:"Свой кадр", title_en:"", kind:"кадр", done:0, lessons:{}, seen:[], image:data, quotes:null };
     S.order = [key, ...S.order]; save();
     startLesson(key, 1);
   } catch(e) { go({ name:"home" }); }
@@ -1020,7 +1349,6 @@ async function onFrame(file){
 /* ---------- events ---------- */
 document.addEventListener("submit", e => {
   if (e.target.id === "searchForm") { e.preventDefault(); openCourse(e.target.q.value); }
-  if (e.target.id === "keyForm") { e.preventDefault(); setApiKey(e.target.apikey.value.trim()); go({ name:"settings", saved:true }); }
 });
 document.addEventListener("click", e => {
   const b = e.target.closest("button"); if (!b) return;
@@ -1030,6 +1358,7 @@ document.addEventListener("click", e => {
   if (d.open) { S.order = [d.open, ...S.order.filter(k=>k!==d.open)]; save(); return go({ name:"course", key:d.open }); }
   if (d.del) { if (b.dataset.confirm) { delete S.courses[d.del]; S.order = S.order.filter(k=>k!==d.del); save(); return go({name:"home"}); } b.dataset.confirm = "1"; b.textContent = "Точно удалить? Нажми ещё раз"; return; }
   if (d.lesson) { const key = d.key || route.key; return startLesson(key, +d.lesson); }
+  if (d.pick) { const c = S.courses[route.key]; if (c) { c.pick = d.pick; c.quotes = null; c.showWords = null; save(); return startLesson(c.key, route.n || c.done + 1); } }
   if (d.opt !== undefined && L && L.state === "answer") {
     L.sel = +d.opt; document.querySelectorAll(".opt").forEach(x => x.setAttribute("aria-pressed", String(x === b))); return drawBar();
   }
@@ -1045,7 +1374,15 @@ document.addEventListener("click", e => {
     case "home": return go({ name:"home" });
     case "vocab": return go({ name:"vocab" });
     case "settings": return go({ name:"settings" });
-    case "delkey": setApiKey(""); return go({ name:"settings" });
+    case "preload": return preloadMT();
+    case "override": {
+      const idx = L.queue[L.pos];
+      if (L.appended) { L.queue.pop(); L.missed.delete(idx); L.appended = false; }
+      L.hearts = Math.min(5, L.hearts + 1); L.firstTry.add(idx); L.xp += 10; L.canOverride = false;
+      L.verdict = { ok:true, right:"", note:"Засчитано.", close:false };
+      const h = $(".hearts"); if (h) h.innerHTML = I.heart + L.hearts;
+      return drawBar();
+    }
     case "upload": return $("#frameFile").click();
     case "stop": if (genCtl) genCtl.abort(); return;
     case "check": return check();
