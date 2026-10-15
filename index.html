@@ -8,10 +8,12 @@
 <meta name="apple-mobile-web-app-title" content="Delishki">
 <meta name="theme-color" content="#eef1f6">
 <meta name="color-scheme" content="light dark">
-<link rel="apple-touch-icon" href="delishki-icon-180.png?v=3">
-<link rel="icon" type="image/png" href="delishki-icon-512.png?v=3">
+<link rel="apple-touch-icon" href="delishki-icon-v4-180.png">
+<link rel="icon" type="image/png" href="delishki-icon-v4-512.png">
 <title>Delishki</title>
 <script>
+/* An old auto-update added "?v…" to the address; drop it so this copy is always the current one */
+if(location.search) history.replaceState(null, "", location.pathname);
 /* Paint the theme background before anything else loads, so launch never flashes another colour */
 (function(){
   var BG = {light:"#eef1f6", dark:"#10141c", xmas:"#0a1626", halloween:"#150f1f"}, t = "auto";
@@ -196,6 +198,16 @@ footer.backup .imp input{display:none}
 .vrow input{width:20px;height:20px;accent-color:var(--done);flex:none}
 .vrow.offc span{color:var(--muted);text-decoration:line-through}
 .warn{font-size:13px;color:var(--danger);margin:0}
+#splash{position:fixed;inset:0;z-index:100;background:var(--bg);display:grid;place-items:center;animation:spOut .35s ease 1.2s forwards}
+.sp-in{display:grid;justify-items:center;gap:16px}
+.sp-box{width:88px;height:88px;animation:spPop .55s cubic-bezier(.2,1.5,.4,1) both;filter:drop-shadow(0 8px 24px rgba(0,0,0,.18))}
+.sp-check{stroke-dasharray:90;stroke-dashoffset:90;animation:spDraw .4s ease .4s forwards}
+.sp-word{font:700 30px/1 var(--display);color:var(--fg);letter-spacing:-.02em;opacity:0;transform:translateY(10px);animation:spWord .45s ease .55s forwards}
+@keyframes spPop{from{opacity:0;transform:scale(.4) rotate(-8deg)}to{opacity:1;transform:none}}
+@keyframes spDraw{to{stroke-dashoffset:0}}
+@keyframes spWord{to{opacity:1;transform:none}}
+@keyframes spOut{to{opacity:0;visibility:hidden}}
+@media (prefers-reduced-motion:reduce){#splash{animation:spOut .3s ease .5s forwards}.sp-box,.sp-word,.sp-check{animation:none;opacity:1;transform:none;stroke-dashoffset:0}}
 #fx{position:fixed;inset:0;pointer-events:none;z-index:0}
 .wrap{position:relative;z-index:1}
 .topbar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
@@ -244,6 +256,10 @@ li.up .r{display:block;font-size:13px;color:var(--muted);font-weight:400;overflo
 </style>
 </head>
 <body>
+<div id="splash" aria-hidden="true"><div class="sp-in">
+  <svg class="sp-box" viewBox="0 0 120 120"><rect width="120" height="120" rx="30" fill="#ffe14d"/><path class="sp-check" d="M30 62l20 19 40-44" stroke="#161616" stroke-width="15" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  <div class="sp-word">Delishki</div>
+</div></div>
 <canvas id="fx" aria-hidden="true"></canvas>
 <svg id="garland" aria-hidden="true"></svg>
 <div class="wrap">
@@ -790,7 +806,7 @@ $("#importFile").onchange = async e=>{
   e.target.value = "";
 };
 // auto-update: when the page is opened, fetch a fresh copy and reload if a newer version was published
-const APP_VERSION = "2026-10-15i";
+const APP_VERSION = "2026-10-15j";
 // Updates install quietly: if a newer version is published, refresh the browser's cached copy
 // so the next launch opens it. Nothing reloads or blinks while the app is open.
 async function checkUpdate(){
@@ -882,6 +898,8 @@ function startFx(){
 }
 let savedTheme = "auto"; try{ savedTheme = localStorage.getItem("delishki-theme") || "auto"; }catch(_){}
 applyTheme(THEME_COLORS[savedTheme] || savedTheme==="auto" ? savedTheme : "auto");
+
+{ const sp = $("#splash"); const gone = ()=>sp.remove(); sp.addEventListener("animationend", e=>{ if(e.animationName==="spOut") gone(); }); setTimeout(gone, 2200); }
 
 load();
 let startTab = "plan"; try{ startTab = ["stats","month"].includes(localStorage.getItem("delishki-tab")) ? localStorage.getItem("delishki-tab") : "plan"; }catch(_){}
