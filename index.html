@@ -10,6 +10,7 @@
 <link rel="apple-touch-icon" href="delishki-icon-180.png?v=3">
 <link rel="icon" type="image/png" href="delishki-icon-512.png?v=3">
 <title>Delishki</title>
+<script>try{var t=localStorage.getItem("delishki-theme");if(t&&t!=="auto")document.documentElement.setAttribute("data-theme",t);}catch(e){}</script>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700&family=Golos+Text:wght@400;500;600&family=JetBrains+Mono:wght@500&family=Creepster&family=Mountains+of+Christmas:wght@700&display=swap">
 <style>
 /* Layout: day header with big percent + week strip, then two columns — day plan | shared task pool */
@@ -36,7 +37,7 @@
   --accent:#ff7a1a; --accent-soft:#3d2414; --done:#9fe14a; --done-soft:#24361a; --danger:#ff6b6b;
   --on-accent:#1b0f05; --on-done:#14200a; --brand-font:"Creepster",var(--display); color-scheme:dark}
 *{box-sizing:border-box}
-html{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+html{overflow-anchor:none;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 body{margin:0;-webkit-text-size-adjust:100%}
 [hidden]{display:none!important}
 body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px;line-height:1.45}
@@ -115,6 +116,14 @@ footer.backup .imp input{display:none}
 :root[data-theme="halloween"] .brand{color:var(--accent);letter-spacing:.04em}
 :root[data-theme="xmas"] .brand{color:#f4fbff;text-shadow:0 0 12px rgba(92,194,255,.7)}
 :root[data-theme="xmas"] section.panel,:root[data-theme="xmas"] .tile{background:linear-gradient(180deg,rgba(180,225,255,.07),transparent 40%),var(--surface);border-color:#2a4d73}
+.brandrow{display:flex;align-items:flex-end;gap:8px}
+.tree{display:none;width:30px;height:36px;flex:none;margin-bottom:-2px}
+:root[data-theme="xmas"] .tree{display:block}
+.tree .star{transform-origin:20px 8px;animation:starglow 3s ease-in-out infinite;filter:drop-shadow(0 0 4px #ffd166)}
+.tree .tb1,.tree .tb2,.tree .tb3{animation:twinkle 1.8s ease-in-out infinite}
+.tree .tb2{animation-delay:-.6s}.tree .tb3{animation-delay:-1.2s}
+@keyframes starglow{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.75;transform:scale(.88)}}
+@media (prefers-reduced-motion:reduce){.tree *{animation:none!important}}
 #garland{display:none;position:absolute;top:0;left:0;right:0;height:70px;pointer-events:none;z-index:2;overflow:hidden}
 :root[data-theme="xmas"] #garland{display:block}
 :root[data-theme="xmas"] .wrap{padding-top:58px}
@@ -226,7 +235,16 @@ li.up .r{display:block;font-size:13px;color:var(--muted);font-weight:400;overflo
 <svg id="garland" aria-hidden="true"></svg>
 <div class="wrap">
   <div class="topbar">
-    <span class="brand">Delishki</span>
+    <span class="brandrow"><span class="brand">Delishki</span>
+      <svg class="tree" viewBox="0 0 40 48" aria-hidden="true">
+        <path class="star" d="M20 1l2.2 4.6 5 .6-3.7 3.4 1 5-4.5-2.5-4.5 2.5 1-5-3.7-3.4 5-.6z" fill="#ffd166"/>
+        <path d="M20 10l9 11h-4l8 10h-5l9 11H3l9-11H7l8-10h-4z" fill="#2fa36b"/>
+        <path d="M20 10l9 11h-4l8 10h-5l9 11H20z" fill="#24875a"/>
+        <rect x="17" y="42" width="6" height="5" rx="1" fill="#8a5a3b"/>
+        <circle class="tb1" cx="15" cy="22" r="1.8" fill="#ff4d5e"/><circle class="tb2" cx="25" cy="27" r="1.8" fill="#5cc2ff"/>
+        <circle class="tb3" cx="13" cy="34" r="1.8" fill="#ffd166"/><circle class="tb1" cx="23" cy="37" r="1.8" fill="#ff8bd1"/>
+        <circle class="tb2" cx="30" cy="38" r="1.8" fill="#5cff9d"/><circle class="tb3" cx="20" cy="17" r="1.6" fill="#ff4d5e"/>
+      </svg></span>
     <div class="topright">
     <div class="themewrap">
       <button type="button" id="themeBtn" aria-label="Тема оформления" aria-haspopup="true" aria-expanded="false">
@@ -759,7 +777,7 @@ $("#importFile").onchange = async e=>{
   e.target.value = "";
 };
 // auto-update: when the page is opened, fetch a fresh copy and reload if a newer version was published
-const APP_VERSION = "2026-10-15e";
+const APP_VERSION = "2026-10-15f";
 async function checkUpdate(){
   try{
     const r = await fetch(location.pathname+"?check="+Date.now(), {cache:"no-store"});
